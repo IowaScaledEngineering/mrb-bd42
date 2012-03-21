@@ -142,7 +142,7 @@ C 65500 59900 1 270 0 capacitor-1.sym
 T 66200 59700 5 10 0 1 270 0 1
 device=CAPACITOR
 T 65800 59600 5 10 1 1 0 0 1
-refdes=C12
+refdes=C13
 T 66400 59700 5 10 0 0 270 0 1
 symversion=0.1
 T 65800 59100 5 10 1 1 0 0 1
@@ -157,7 +157,7 @@ C 66300 59900 1 270 0 capacitor-1.sym
 T 67000 59700 5 10 0 1 270 0 1
 device=CAPACITOR
 T 66600 59600 5 10 1 1 0 0 1
-refdes=C13
+refdes=C14
 T 67200 59700 5 10 0 0 270 0 1
 symversion=0.1
 T 66600 59100 5 10 1 1 0 0 1
@@ -219,9 +219,10 @@ footprint=1206
 N 56700 59000 56700 58800 4
 C 56600 57400 1 0 0 gnd-1.sym
 N 56700 57700 56700 57900 4
-T 65400 60200 9 10 1 0 0 3 2
+T 65400 60400 9 10 1 0 0 3 3
 Place C11-C12 near AVR power pins
 Place C13 near LM339 power pins
+Place C14 near 74AC14 power pins
 C 44800 58600 1 0 1 termblk2-1.sym
 {
 T 43800 59250 5 10 0 0 0 6 1
@@ -799,7 +800,7 @@ C 64700 59900 1 270 0 capacitor-1.sym
 T 65400 59700 5 10 0 1 270 0 1
 device=CAPACITOR
 T 65000 59600 5 10 1 1 0 0 1
-refdes=C11
+refdes=C12
 T 65600 59700 5 10 0 0 270 0 1
 symversion=0.1
 T 65000 59100 5 10 1 1 0 0 1
@@ -1002,6 +1003,8 @@ T 72400 54225 5 10 0 0 0 6 1
 footprint=modular_6p6c_lp.fp
 T 72200 51800 5 10 1 1 0 6 1
 device=RJ11
+T 72400 50200 5 10 1 0 0 0 1
+footprint=modular_6p6c_lp
 }
 C 72400 47200 1 0 1 modular_6p6c_small.sym
 {
@@ -1011,6 +1014,8 @@ T 72400 51225 5 10 0 0 0 6 1
 footprint=modular_6p6c_lp.fp
 T 72200 48800 5 10 1 1 0 6 1
 device=RJ11
+T 72400 47200 5 10 1 0 0 0 1
+footprint=modular_6p6c_lp
 }
 C 69700 46700 1 0 0 gnd-1.sym
 C 69700 49700 1 0 0 gnd-1.sym
@@ -1069,3 +1074,28 @@ N 62900 49900 64900 49900 4
 N 64900 49900 64900 57500 4
 N 61000 57500 64900 57500 4
 N 61000 57500 61000 61000 4
+C 62700 59000 1 0 0 74power-1.sym
+{
+T 62300 59200 5 10 1 1 0 0 1
+refdes=U5
+T 62900 60450 5 10 0 0 0 0 1
+footprint=SO14
+T 62000 58900 5 10 1 1 0 0 1
+device=74ACT14
+}
+C 62800 58600 1 0 0 gnd-1.sym
+C 63900 59900 1 270 0 capacitor-1.sym
+{
+T 64600 59700 5 10 0 1 270 0 1
+device=CAPACITOR
+T 64200 59600 5 10 1 1 0 0 1
+refdes=C11
+T 64800 59700 5 10 0 0 270 0 1
+symversion=0.1
+T 64200 59100 5 10 1 1 0 0 1
+value=0.1uF
+T 63900 59900 5 10 0 0 0 0 1
+footprint=0805
+}
+C 64000 58700 1 0 0 gnd-1.sym
+N 64100 59900 64100 60100 4

@@ -1,5 +1,45 @@
 # Pin name action command file
 
+# Start of element C11
+ChangePinName(C11, 2, 2)
+ChangePinName(C11, 1, 1)
+
+# Start of element R23
+ChangePinName(R23, 1, 1)
+ChangePinName(R23, 2, 2)
+
+# Start of element J5
+ChangePinName(J5, 6, 6)
+ChangePinName(J5, 5, 5)
+ChangePinName(J5, 4, 4)
+ChangePinName(J5, 3, 3)
+ChangePinName(J5, 2, 2)
+ChangePinName(J5, 1, 1)
+
+# Start of element J4
+ChangePinName(J4, 6, 6)
+ChangePinName(J4, 5, 5)
+ChangePinName(J4, 4, 4)
+ChangePinName(J4, 3, 3)
+ChangePinName(J4, 2, 2)
+ChangePinName(J4, 1, 1)
+
+# Start of element U5
+ChangePinName(U5, 14, Vcc)
+ChangePinName(U5, 7, GND)
+ChangePinName(U5, 10, Y)
+ChangePinName(U5, 11, A)
+ChangePinName(U5, 12, Y)
+ChangePinName(U5, 13, A)
+ChangePinName(U5, 8, Y)
+ChangePinName(U5, 9, A)
+ChangePinName(U5, 6, Y)
+ChangePinName(U5, 5, A)
+ChangePinName(U5, 6, Y)
+ChangePinName(U5, 5, A)
+ChangePinName(U5, 2, Y)
+ChangePinName(U5, 1, A)
+
 # Start of element D11
 ChangePinName(D11, 2, ANODE)
 ChangePinName(D11, 1, CATHODE)
@@ -32,9 +72,9 @@ ChangePinName(D8, 1, CATHODE)
 ChangePinName(R19, 1, 1)
 ChangePinName(R19, 2, 2)
 
-# Start of element C11
-ChangePinName(C11, 2, 2)
-ChangePinName(C11, 1, 1)
+# Start of element C12
+ChangePinName(C12, 2, 2)
+ChangePinName(C12, 1, 1)
 
 # Start of element R17
 ChangePinName(R17, 1, 1)
@@ -261,13 +301,13 @@ ChangePinName(R1, 2, 2)
 ChangePinName(D7, 1, cathode)
 ChangePinName(D7, 2, anode)
 
+# Start of element C14
+ChangePinName(C14, 2, 2)
+ChangePinName(C14, 1, 1)
+
 # Start of element C13
 ChangePinName(C13, 2, 2)
 ChangePinName(C13, 1, 1)
-
-# Start of element C12
-ChangePinName(C12, 2, 2)
-ChangePinName(C12, 1, 1)
 
 # Start of element D2
 ChangePinName(D2, 2, ANODE)
