@@ -1003,7 +1003,7 @@ T 72400 54225 5 10 0 0 0 6 1
 footprint=modular_6p6c_lp.fp
 T 72200 51800 5 10 1 1 0 6 1
 device=RJ11
-T 72400 50200 5 10 1 0 0 0 1
+T 72400 50200 5 10 0 0 0 0 1
 footprint=modular_6p6c_lp
 }
 C 72400 47200 1 0 1 modular_6p6c_small.sym
@@ -1014,7 +1014,7 @@ T 72400 51225 5 10 0 0 0 6 1
 footprint=modular_6p6c_lp.fp
 T 72200 48800 5 10 1 1 0 6 1
 device=RJ11
-T 72400 47200 5 10 1 0 0 0 1
+T 72400 47200 5 10 0 0 0 0 1
 footprint=modular_6p6c_lp
 }
 C 69700 46700 1 0 0 gnd-1.sym
