@@ -1,5 +1,14 @@
 # Pin name action command file
 
+# Start of element U1
+ChangePinName(U1, 1, 1)
+ChangePinName(U1, 2, 2)
+ChangePinName(U1, 3, 3)
+
+# Start of element C1
+ChangePinName(C1, 2, 2)
+ChangePinName(C1, 1, +)
+
 # Start of element C11
 ChangePinName(C11, 2, 2)
 ChangePinName(C11, 1, 1)
@@ -264,11 +273,6 @@ ChangePinName(U3, 5, 5)
 ChangePinName(C2, 2, 2)
 ChangePinName(C2, 1, 1)
 
-# Start of element U1
-ChangePinName(U1, 3, 3)
-ChangePinName(U1, 2, 2)
-ChangePinName(U1, 1, 1)
-
 # Start of element H4
 ChangePinName(H4, 1, 1)
 
@@ -336,10 +340,6 @@ ChangePinName(C7, 1, 1)
 # Start of element Y1
 ChangePinName(Y1, 2, 2)
 ChangePinName(Y1, 1, 1)
-
-# Start of element C1
-ChangePinName(C1, 2, 2)
-ChangePinName(C1, 1, 1)
 
 # Start of element U2
 ChangePinName(U2, 8, Vcc)
