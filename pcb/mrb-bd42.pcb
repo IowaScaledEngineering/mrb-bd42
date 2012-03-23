@@ -1,12 +1,12 @@
 # release: pcb 20100929
-# date:    Fri Mar 23 17:27:11 2012
+# date:    Fri Mar 23 17:31:21 2012
 # user:    ndholmes (Nathan D. Holmes,,,)
 # host:    gozer
 
 # To read pcb files, the pcb version (or the git source date) must be >= the file version
 FileVersion[20100606]
 
-PCB["" 450000 450000]
+PCB["" 350000 190000]
 
 Grid[500.000000 0 0 0]
 Cursor[0 190000 0.000000]
