@@ -1,5 +1,5 @@
 # release: pcb 20100929
-# date:    Fri Mar 23 20:56:07 2012
+# date:    Fri Mar 23 21:10:16 2012
 # user:    ndholmes (Nathan D. Holmes,,,)
 # host:    copernicus
 
@@ -884,9 +884,9 @@ Element["" "bourns3266" "R10" "10k" 224500 165500 -1500 -21000 0 100 ""]
 	Attribute("copyright" "2012 Nathan D. Holmes")
 	Attribute("use-license" "Unlimited")
 	Attribute("dist-license" "CC-BY-SA-3.0")
-	Pin[0 10000 7000 3000 7600 2000 "1" "1" "square"]
-	Pin[0 0 7000 3000 7600 2000 "2" "2" ""]
-	Pin[0 -10000 7000 3000 7600 2000 "3" "3" ""]
+	Pin[0 10000 7000 3000 7600 3900 "1" "1" "square"]
+	Pin[0 0 7000 3000 7600 3900 "2" "2" ""]
+	Pin[0 -10000 7000 3000 7600 3900 "3" "3" ""]
 	ElementLine [-8000 -13950 -8000 13950 1000]
 	ElementLine [9600 -13950 9600 13950 1000]
 	ElementLine [-9600 13950 9600 13950 1000]
@@ -1312,9 +1312,9 @@ Element["" "bourns3266" "R14" "10k" 225000 24000 -5500 15500 0 100 ""]
 	Attribute("copyright" "2012 Nathan D. Holmes")
 	Attribute("use-license" "Unlimited")
 	Attribute("dist-license" "CC-BY-SA-3.0")
-	Pin[0 10000 7000 3000 7600 2000 "1" "1" "square"]
-	Pin[0 0 7000 3000 7600 2000 "2" "2" ""]
-	Pin[0 -10000 7000 3000 7600 2000 "3" "3" ""]
+	Pin[0 10000 7000 3000 7600 3900 "1" "1" "square"]
+	Pin[0 0 7000 3000 7600 3900 "2" "2" ""]
+	Pin[0 -10000 7000 3000 7600 3900 "3" "3" ""]
 	ElementLine [-8000 -13950 -8000 13950 1000]
 	ElementLine [9600 -13950 9600 13950 1000]
 	ElementLine [-9600 13950 9600 13950 1000]
@@ -1346,9 +1346,9 @@ Element["" "bourns3266" "R12" "10k" 120000 24000 -7500 14500 0 100 ""]
 	Attribute("copyright" "2012 Nathan D. Holmes")
 	Attribute("use-license" "Unlimited")
 	Attribute("dist-license" "CC-BY-SA-3.0")
-	Pin[0 10000 7000 3000 7600 2000 "1" "1" "square"]
-	Pin[0 0 7000 3000 7600 2000 "2" "2" ""]
-	Pin[0 -10000 7000 3000 7600 2000 "3" "3" ""]
+	Pin[0 10000 7000 3000 7600 3900 "1" "1" "square"]
+	Pin[0 0 7000 3000 7600 3900 "2" "2" ""]
+	Pin[0 -10000 7000 3000 7600 3900 "3" "3" ""]
 	ElementLine [-8000 -13950 -8000 13950 1000]
 	ElementLine [9600 -13950 9600 13950 1000]
 	ElementLine [-9600 13950 9600 13950 1000]
@@ -1477,9 +1477,9 @@ Element["" "bourns3266" "R8" "10k" 120000 166000 -7500 -21000 0 100 ""]
 	Attribute("copyright" "2012 Nathan D. Holmes")
 	Attribute("use-license" "Unlimited")
 	Attribute("dist-license" "CC-BY-SA-3.0")
-	Pin[0 10000 7000 3000 7600 2000 "1" "1" "square"]
-	Pin[0 0 7000 3000 7600 2000 "2" "2" ""]
-	Pin[0 -10000 7000 3000 7600 2000 "3" "3" ""]
+	Pin[0 10000 7000 3000 7600 3900 "1" "1" "square"]
+	Pin[0 0 7000 3000 7600 3900 "2" "2" ""]
+	Pin[0 -10000 7000 3000 7600 3900 "3" "3" ""]
 	ElementLine [-8000 -13950 -8000 13950 1000]
 	ElementLine [9600 -13950 9600 13950 1000]
 	ElementLine [-9600 13950 9600 13950 1000]
