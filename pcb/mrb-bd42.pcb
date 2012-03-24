@@ -1,5 +1,5 @@
 # release: pcb 20100929
-# date:    Fri Mar 23 22:10:04 2012
+# date:    Fri Mar 23 22:13:57 2012
 # user:    ndholmes (Nathan D. Holmes,,,)
 # host:    copernicus
 
@@ -868,7 +868,6 @@ Via[125500 121000 4000 2000 0 2000 "" ""]
 Via[137000 184500 6000 2000 0 3500 "" ""]
 Via[177500 34000 4000 2000 0 2000 "" ""]
 Via[129500 37000 6000 2000 0 3500 "" ""]
-Via[8000 42000 6000 2000 0 3500 "" ""]
 Via[111000 41000 6000 2000 0 3500 "" ""]
 
 Element["" "CST306" "T1" "unknown" 73500 166000 36500 15500 0 100 ""]
@@ -1551,7 +1550,7 @@ Element["" "0805" "C6" "1uF" 171500 110500 -4000 4000 0 100 ""]
 
 	)
 
-Element["selected" "modular_6p6c_lp.fp" "J5" "unknown" 317500 67000 23500 -34500 0 100 "selected"]
+Element["" "modular_6p6c_lp.fp" "J5" "unknown" 317500 67000 23500 -34500 0 100 ""]
 (
 	Attribute("author" "Alexander Kurz")
 	Attribute("copyright" "2009 Alexander Kurz")
@@ -2606,10 +2605,6 @@ Layer(2 "solder")
 	Polygon("")
 	(
 		[125500 33000] [133500 33000] [133500 41000] [125500 41000] 
-	)
-	Polygon("")
-	(
-		[13500 37000] [22000 37000] [22000 44500] [13500 44500] 
 	)
 	Polygon("")
 	(
