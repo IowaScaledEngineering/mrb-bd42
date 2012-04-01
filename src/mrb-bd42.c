@@ -31,9 +31,7 @@ extern uint8_t mrbus_tx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbus_state;
 extern uint8_t mrbus_activity;
 
-#define EE_DEVICE_ADDR  1
-
-uint8_t dev_addr = 0x11;
+uint8_t mrbus_dev_addr = 0x11;
 
 // ******** Start 100 Hz Timer 
 
@@ -102,11 +100,11 @@ void PktHandler(void)
 
 	//*************** PACKET FILTER ***************
 	// Loopback Test - did we send it?  If so, we probably want to ignore it
-	if (mrbus_rx_buffer[MRBUS_PKT_SRC] == dev_addr) 
+	if (mrbus_rx_buffer[MRBUS_PKT_SRC] == mrbus_dev_addr) 
 		goto	PktIgnore;
 
 	// Destination Test - is this for us or broadcast?  If not, ignore
-	if (0xFF != mrbus_rx_buffer[MRBUS_PKT_DEST] && dev_addr != mrbus_rx_buffer[MRBUS_PKT_DEST]) 
+	if (0xFF != mrbus_rx_buffer[MRBUS_PKT_DEST] && mrbus_dev_addr != mrbus_rx_buffer[MRBUS_PKT_DEST]) 
 		goto	PktIgnore;
 	
 	// CRC16 Test - is the packet intact?
@@ -139,7 +137,7 @@ void PktHandler(void)
 	{
 		// PING packet
 		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
-		mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 		mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
 		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'a';
 		mrbus_state |= MRBUS_TX_PKT_READY;
@@ -154,9 +152,9 @@ void PktHandler(void)
 		eeprom_write_byte((uint8_t*)(uint16_t)mrbus_rx_buffer[6], mrbus_rx_buffer[7]);
 		mrbus_tx_buffer[6] = mrbus_rx_buffer[6];
 		mrbus_tx_buffer[7] = mrbus_rx_buffer[7];
-		if (EE_DEVICE_ADDR == mrbus_rx_buffer[6])
-			dev_addr = eeprom_read_byte((uint8_t*)EE_DEVICE_ADDR);
-		mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+		if (MRBUS_EE_DEVICE_ADDR == mrbus_rx_buffer[6])
+			mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
+		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 		mrbus_state |= MRBUS_TX_PKT_READY;
 		goto PktIgnore;
 	
@@ -165,7 +163,7 @@ void PktHandler(void)
 	{
 		// EEPROM READ Packet
 		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
-		mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 		mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
 		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'r';
 		mrbus_tx_buffer[6] = eeprom_read_byte((uint8_t*)(uint16_t)mrbus_rx_buffer[6]);			
@@ -193,10 +191,8 @@ PktIgnore:
 
 void init(void)
 {
-	// FIXME:  Do any initialization you need to do here.
-
-	// Initialize MRBus address from EEPROM address 1
-	dev_addr = eeprom_read_byte((uint8_t*)1);
+	// Initialize MRBus address from EEPROM
+	mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
 }
 
 
@@ -235,7 +231,7 @@ int main(void)
 		/* If we need to send a packet and we're not already busy... */
 		if ((changed != 0) && !(mrbus_state & (MRBUS_TX_BUF_ACTIVE | MRBUS_TX_PKT_READY)))
 		{
-			mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+			mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
 			mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
 			mrbus_tx_buffer[5] = 'S';
