@@ -64,7 +64,6 @@ ISR(TIMER0_COMPA_vect)
 		ticks = 0;
 		secs++;
 	}
-	PORTB ^= _BV(PB0);
 }
 /*
 void initialize100HzTimer(void)
