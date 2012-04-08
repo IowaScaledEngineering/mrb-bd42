@@ -32,6 +32,7 @@ extern uint8_t mrbus_state;
 extern uint8_t mrbus_activity;
 
 uint8_t mrbus_dev_addr = 0x11;
+uint8_t output_status=0;
 
 // ******** Start 100 Hz Timer 
 
@@ -138,7 +139,7 @@ void PktHandler(void)
 		// PING packet
 		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
 		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
-		mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
+		mrbus_tx_buffer[MRBUS_PKT_LEN] = 6;
 		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'a';
 		mrbus_state |= MRBUS_TX_PKT_READY;
 		goto PktIgnore;
@@ -170,6 +171,24 @@ void PktHandler(void)
 		mrbus_state |= MRBUS_TX_PKT_READY;
 		goto PktIgnore;
 	}
+	else if ('C' == mrbus_rx_buffer[MRBUS_PKT_TYPE]) 
+	{
+		// Control Packet
+		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
+		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
+		mrbus_tx_buffer[MRBUS_PKT_LEN] = 8;
+		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'c';
+		mrbus_tx_buffer[6] = mrbus_rx_buffer[6];
+		mrbus_tx_buffer[7] = mrbus_rx_buffer[7];
+
+		if (mrbus_rx_buffer[6]<3 && mrbus_rx_buffer[7])
+			output_status |= 1<<mrbus_rx_buffer[6];
+		else
+			output_status &= ~(1<<mrbus_rx_buffer[6]);
+		
+		mrbus_state |= MRBUS_TX_PKT_READY;
+		goto PktIgnore;
+	}
 
 	// FIXME:  Insert code here to handle incoming packets specific
 	// to the device.
@@ -198,7 +217,7 @@ void init(void)
 
 int main(void)
 {
-	uint8_t changed=0;
+	uint8_t changed=0, old_output_status = 0;
 	// Application initialization
 	init();
 
@@ -206,7 +225,7 @@ int main(void)
 	// remove it if you don't use it.
 	initialize100HzTimer();
 
-	DDRB |= _BV(PB0);
+	DDRB |= _BV(PB0) | _BV(PB1) | _BV(PB2) | _BV(PB3);
 	
 	// Initialize MRBus core
 	mrbusInit();
@@ -220,6 +239,14 @@ int main(void)
 			PktHandler();
 			
 		// FIXME: Do any module-specific behaviours here in the loop.
+
+		PORTB = (PORTB & 0xF0) | (0x0F & output_status);
+
+		if (old_output_status != output_status)
+		{
+			old_output_status = output_status;
+			changed = 1;
+		}
 
 		/* Events that happen every second */
 		if (secs >= 2)
@@ -235,7 +262,7 @@ int main(void)
 			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
 			mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
 			mrbus_tx_buffer[5] = 'S';
-			mrbus_tx_buffer[6] = 0;
+			mrbus_tx_buffer[6] = output_status;
 			mrbus_state |= MRBUS_TX_PKT_READY;
 			changed = 0;
 		}
