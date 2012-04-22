@@ -2,7 +2,7 @@
 #Title:    MRB-BD42 Makefile
 #Authors:  Michael Petersen <railfan@drgw.net>
 #          Nathan Holmes <maverick@drgw.net>
-#File:     MRB-AVRTEMPLATE Makefile
+#File:     Makefile
 #License:  GNU General Public License v3
 #
 #LICENSE:
@@ -25,21 +25,57 @@
 #    
 #*************************************************************************
 
-DEVICE  = attiny2313
-F_CPU   = 20000000	# Hz
-FUSE_L  = 0xCE
-FUSE_H  = 0x99
-FUSE_E  = 0xFF
+BASE_NAME = mrb-bd42
+
+# ATmega164P 20MHz @ 5.0V
+#DEVICE  = atmega164p
+#F_CPU   = 20000000  # Hz
+#FUSE_L  = 0xD7
+#FUSE_H  = 0xD1
+#FUSE_E  = 0x04
+
+# ATmega48P 20MHz @ 5.0V
+DEVICE  = atmega48p
+F_CPU   = 20000000  # Hz
+FUSE_L  = 0xE7
+FUSE_H  = 0xD4
+FUSE_E  = 0x04
+
+# ATmega328P 12MHz @ 3.3V
+#DEVICE  = atmega328p
+#F_CPU   = 12000000  # Hz
+#FUSE_L  = 0xD7
+#FUSE_H  = 0xD1
+#FUSE_E  = 0x05
+
+# ATmega328P 3.579545MHz @ 3.3V
+#DEVICE  = atmega328p
+#F_CPU   = 3579545   # Hz
+#FUSE_L  = 0x97      # Clock output on PB0 (Debug)
+#FUSE_H  = 0xD1
+#FUSE_E  = 0x05
+
+
+
+# MRBus
+DEFINES = -DMRBUS
+SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c
+INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h
+
+# MRBee
+#DEFINES = -DMRBEE -DMRBEE_BAUD=115200
+#SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
+#INCS = ../../mrbus/src/mrbus.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
+
+
+
 AVRDUDE = avrdude -c usbtiny -p $(DEVICE) 
 
-BASE_NAME = mrb-bd42
-INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h
-SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c
 OBJS = ${SRCS:.c=.o}
-INCLUDES = -I. -I../../mrbus/src
+INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
 CFLAGS  = $(INCLUDES) -Wall -Os
 
-COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
+COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
 # -E -dM options preprocess only and output results of #define
 #COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM

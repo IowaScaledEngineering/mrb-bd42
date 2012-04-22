@@ -1,7 +1,7 @@
 /*************************************************************************
-Title:    MRBus 4-Channel Block Detector, Mark II
+Title:    MRBus 4 Channel Block Detector (MRB-BD42)
 Authors:  Nathan D. Holmes <maverick@drgw.net>
-File:     $Id: $
+File:     mrb-bd42.c
 License:  GNU General Public License v3
 
 LICENSE:
@@ -24,17 +24,46 @@ LICENSE:
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <util/delay.h>
+
+#ifdef MRBEE
+// If wireless, redefine the common variables and functions
+#include "mrbee.h"
+#define mrbus_rx_buffer mrbee_rx_buffer
+#define mrbus_tx_buffer mrbee_tx_buffer
+#define mrbus_state mrbee_state
+#define MRBUS_TX_PKT_READY MRBEE_TX_PKT_READY
+#define MRBUS_RX_PKT_READY MRBEE_RX_PKT_READY
+#define mrbux_rx_buffer mrbee_rx_buffer
+#define mrbus_tx_buffer mrbee_tx_buffer
+#define mrbus_state mrbee_state
+#define mrbusInit mrbeeInit
+#define mrbusPacketTransmit mrbeePacketTransmit
+#endif
+
 #include "mrbus.h"
 
+extern uint8_t mrbus_activity;
 extern uint8_t mrbus_rx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbus_tx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbus_state;
-extern uint8_t mrbus_activity;
 
-uint8_t mrbus_dev_addr = 0x11;
-uint8_t output_status=0;
+// Global Variables
+uint8_t mrbus_dev_addr = 0;
+uint8_t bd_int_status = 0;
+uint8_t bd_ex1_status = 0;
+uint8_t bd_ex2_status = 0;
+uint8_t old_bd_int_status = 0;
+uint8_t old_bd_ex1_status = 0;
+uint8_t old_bd_ex2_status = 0;
+uint8_t ticks=0;
+uint16_t decisecs=0;
+uint16_t update_decisecs=0;
 
-// ******** Start 100 Hz Timer 
+
+
+// ******** Start 100 Hz Timer, 0.16% error version (Timer 0)
+// If you can live with a slightly less accurate timer, this one only uses Timer 0, leaving Timer 1 open
+// for more advanced things that actually need a 16 bit timer/counter
 
 // Initialize a 100Hz timer for use in triggering events.
 // If you need the timer resources back, you can remove this, but I find it
@@ -42,8 +71,6 @@ uint8_t output_status=0;
 // If you do remove it, be sure to yank the interrupt handler and ticks/secs as well
 // and the call to this function in the main function
 
-uint8_t ticks;
-uint8_t secs;
 
 void initialize100HzTimer(void)
 {
@@ -51,47 +78,22 @@ void initialize100HzTimer(void)
 	TCNT0 = 0;
 	OCR0A = 0xC2;
 	ticks = 0;
-	secs = 0;
+	decisecs = 0;
 	TCCR0A = _BV(WGM01);
 	TCCR0B = _BV(CS02) | _BV(CS00);
-	TIMSK |= _BV(OCIE0A);
+	TIMSK0 |= _BV(OCIE0A);
 }
 
 ISR(TIMER0_COMPA_vect)
 {
-	if (++ticks >= 100)
+	if (++ticks >= 10)
 	{
 		ticks = 0;
-		secs++;
-	}
-}
-/*
-void initialize100HzTimer(void)
-{
-	// Set up timer 1 for 100Hz interrupts
-	TCCR1A = 0;
-	TCCR1B = _BV(CS11) | _BV(CS10);
-	TCCR1C = 0;
-	TIMSK1 = _BV(TOIE1);
-	ticks = 0;
-	secs = 0;
-}
-
-ISR(TIMER1_OVF_vect)
-{
-	TCNT1 += 0xF3CB;
-	ticks++;
-	if (ticks >= 100)
-	{
-		ticks = 0;
-		secs++;
+		decisecs++;
 	}
 }
 
-// ******** End 100 Hz Timer 
-*/
-#define UINT16_HIGH_BYTE(a)  ((a)>>8)
-#define UINT16_LOW_BYTE(a)  ((a) & 0xFF)
+// End of 100Hz timer
 
 void PktHandler(void)
 {
@@ -152,8 +154,20 @@ void PktHandler(void)
 		eeprom_write_byte((uint8_t*)(uint16_t)mrbus_rx_buffer[6], mrbus_rx_buffer[7]);
 		mrbus_tx_buffer[6] = mrbus_rx_buffer[6];
 		mrbus_tx_buffer[7] = mrbus_rx_buffer[7];
-		if (MRBUS_EE_DEVICE_ADDR == mrbus_rx_buffer[6])
-			mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
+
+		// Update anything we may have written
+		switch(mrbus_rx_buffer[6])
+		{
+			case MRBUS_EE_DEVICE_ADDR:
+				mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
+				break;
+			case MRBUS_EE_DEVICE_UPDATE_L:
+			case MRBUS_EE_DEVICE_UPDATE_H:
+				update_decisecs = (uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) 
+					| (((uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H)) << 8);
+				break;
+		}
+
 		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 		mrbus_state |= MRBUS_TX_PKT_READY;
 		goto PktIgnore;
@@ -163,28 +177,10 @@ void PktHandler(void)
 	{
 		// EEPROM READ Packet
 		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
-		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
-		mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
+		mrbus_tx_buffer[MRBUS_PKT_LEN] = 8;			
 		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'r';
-		mrbus_tx_buffer[6] = eeprom_read_byte((uint8_t*)(uint16_t)mrbus_rx_buffer[6]);			
-		mrbus_state |= MRBUS_TX_PKT_READY;
-		goto PktIgnore;
-	}
-	else if ('C' == mrbus_rx_buffer[MRBUS_PKT_TYPE]) 
-	{
-		// Control Packet
-		mrbus_tx_buffer[MRBUS_PKT_DEST] = mrbus_rx_buffer[MRBUS_PKT_SRC];
-		mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
-		mrbus_tx_buffer[MRBUS_PKT_LEN] = 8;
-		mrbus_tx_buffer[MRBUS_PKT_TYPE] = 'c';
 		mrbus_tx_buffer[6] = mrbus_rx_buffer[6];
-		mrbus_tx_buffer[7] = mrbus_rx_buffer[7];
-
-		if (mrbus_rx_buffer[6]<3 && mrbus_rx_buffer[7])
-			output_status |= 1<<mrbus_rx_buffer[6];
-		else
-			output_status &= ~(1<<mrbus_rx_buffer[6]);
-		
+		mrbus_tx_buffer[7] = eeprom_read_byte((uint8_t*)(uint16_t)mrbus_rx_buffer[6]);			
 		mrbus_state |= MRBUS_TX_PKT_READY;
 		goto PktIgnore;
 	}
@@ -207,16 +203,42 @@ PktIgnore:
 	return;	
 }
 
+#define PORTB_IN_BITS 0x07
+#define PORTC_IN_BITS 0x1F
+#define PORTD_IN_BITS 0xF0
+
 void init(void)
 {
-	// Initialize MRBus address from EEPROM
+	// Turn the correct bits to inputs
+	DDRB &= ~(PORTB_IN_BITS);
+	DDRC &= ~(PORTC_IN_BITS);
+	DDRD &= ~(PORTD_IN_BITS);
+
+	// Turn on pull-ups
+	PORTB |= PORTB_IN_BITS;
+	PORTC |= PORTC_IN_BITS;
+	PORTD |= PORTD_IN_BITS;
+	// Initialize MRBus address from EEPROM address 1
 	mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
+	update_decisecs = (uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) 
+		| (((uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H)) << 8);
+
+	update_decisecs = max(1, update_decisecs);
+}
+
+void readDetectors(void)
+{
+	bd_int_status = (PIND>>4) && 0x0F;
+	bd_ex1_status = (PINC & 0x0F);
+	bd_ex2_status = (PINB & 0x07) | ((PINC>>1) & 0x08);
 }
 
 
 int main(void)
 {
-	uint8_t changed=0, old_output_status = 0;
+
+	uint8_t changed=0;
+
 	// Application initialization
 	init();
 
@@ -224,48 +246,49 @@ int main(void)
 	// remove it if you don't use it.
 	initialize100HzTimer();
 
-	DDRB |= _BV(PB0) | _BV(PB1) | _BV(PB2) | _BV(PB3);
-	
 	// Initialize MRBus core
 	mrbusInit();
+
+	// Do the initial read on the detectors and make sure the old variables match
+	readDetectors();
+	old_bd_int_status = bd_int_status;
+	old_bd_ex1_status = bd_ex1_status;
+	old_bd_ex2_status = bd_ex2_status;
 
 	sei();	
 
 	while (1)
 	{
+#ifdef MRBEE
+		mrbeePoll();
+#endif
 		// Handle any packets that may have come in
 		if (mrbus_state & MRBUS_RX_PKT_READY)
 			PktHandler();
-			
-		// FIXME: Do any module-specific behaviours here in the loop.
 
-		PORTB = (PORTB & 0xF0) | (0x0F & output_status);
+		readDetectors();
 
-		if (old_output_status != output_status)
+		if ( (decisecs >=	update_decisecs) || (bd_int_status ^ old_bd_int_status) || (bd_ex1_status ^ old_bd_ex1_status) || (bd_ex2_status ^ old_bd_ex2_status) )
 		{
-			old_output_status = output_status;
+			decisecs = 0;
 			changed = 1;
-		}
-
-		/* Events that happen every second */
-		if (secs >= 2)
-		{
-			secs = 0;
-			changed = 1;		
+			old_bd_int_status = bd_int_status;
+			old_bd_ex1_status = bd_ex1_status;
+			old_bd_ex2_status = bd_ex2_status;
 		}
 
 		/* If we need to send a packet and we're not already busy... */
-		if ((changed != 0) && !(mrbus_state & (MRBUS_TX_BUF_ACTIVE | MRBUS_TX_PKT_READY)))
+		if (changed && !(mrbus_state & (MRBUS_TX_BUF_ACTIVE | MRBUS_TX_PKT_READY)))
 		{
 			mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
-			mrbus_tx_buffer[MRBUS_PKT_LEN] = 7;			
+			mrbus_tx_buffer[MRBUS_PKT_LEN] = 8;			
 			mrbus_tx_buffer[5] = 'S';
-			mrbus_tx_buffer[6] = output_status;
+			mrbus_tx_buffer[6] = bd_int_status;
+			mrbus_tx_buffer[7] = (bd_ex1_status & 0x0F) | ((bd_ex2_status<<4) & 0xF0);
 			mrbus_state |= MRBUS_TX_PKT_READY;
 			changed = 0;
 		}
-		
 
 		// If we have a packet to be transmitted, try to send it here
 		while(mrbus_state & MRBUS_TX_PKT_READY)
@@ -286,6 +309,7 @@ int main(void)
 				break;
 			}
 
+#ifndef MRBEE
 			// If we're here, we failed to start transmission due to somebody else transmitting
 			// Given that our transmit buffer is full, priority one should be getting that data onto
 			// the bus so we can start using our tx buffer again.  So we stay in the while loop, trying
@@ -303,6 +327,7 @@ int main(void)
 				if (mrbus_state & MRBUS_RX_PKT_READY) 
 					PktHandler();
 			}
+#endif
 		}
 	}
 }
