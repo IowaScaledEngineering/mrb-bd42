@@ -228,7 +228,7 @@ void init(void)
 
 void readDetectors(void)
 {
-	bd_int_status = (PIND>>4) && 0x0F;
+	bd_int_status = (PIND>>4) & 0x0F;
 	bd_ex1_status = (PINC & 0x0F);
 	bd_ex2_status = (PINB & 0x07) | ((PINC>>1) & 0x08);
 }
