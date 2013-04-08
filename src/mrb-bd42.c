@@ -42,11 +42,6 @@ LICENSE:
 
 #include "mrbus.h"
 
-extern uint8_t mrbus_activity;
-extern uint8_t mrbus_rx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbus_tx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbus_state;
-
 // Global Variables
 uint8_t mrbus_dev_addr = 0;
 uint8_t bd_int_status = 0;
@@ -256,6 +251,8 @@ int main(void)
 	old_bd_ex2_status = bd_ex2_status;
 
 	sei();	
+
+	update_decisecs = 10;
 
 	while (1)
 	{
