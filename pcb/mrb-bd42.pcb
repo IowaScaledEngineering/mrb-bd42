@@ -1106,7 +1106,7 @@ Element["" "CST306" "T4" "unknown" 178000 24500 36500 -22000 0 100 ""]
 
 Element["hidename" "STANDOFF_HEX_n4" "H3" "unknown" 18000 172000 0 10000 0 100 ""]
 (
-	Pin[0 0 29368 0 29368 12850 "screw" "1" ""]
+	Pin[0 0 29368 2000 29968 12850 "screw" "1" ""]
 
 	)
 
@@ -1198,7 +1198,7 @@ Element["" "0805" "R16" "10k" 121000 48000 -5000 4000 0 100 ""]
 
 Element["hidename" "STANDOFF_HEX_n4" "H1" "unknown" 333000 172500 7000 9000 0 100 ""]
 (
-	Pin[0 0 29368 0 29368 12850 "screw" "1" ""]
+	Pin[0 0 29368 2000 29968 12850 "screw" "1" ""]
 
 	)
 
@@ -1414,7 +1414,7 @@ Element["" "SO14" "U5" "unknown" 146500 74000 -2500 19500 0 100 ""]
 
 Element["hidename" "STANDOFF_HEX_n4" "H4" "unknown" 16500 17000 10500 -16000 0 100 ""]
 (
-	Pin[0 0 29368 0 29368 12850 "screw" "1" ""]
+	Pin[0 0 29368 2000 29968 12850 "screw" "1" ""]
 
 	)
 
@@ -1514,7 +1514,7 @@ Element["" "0805" "R19" "330" 136500 42000 4000 3500 0 100 ""]
 
 Element["hidename" "STANDOFF_HEX_n4" "H2" "unknown" 332500 17000 -19500 14000 0 100 ""]
 (
-	Pin[0 0 29368 0 29368 12850 "screw" "1" ""]
+	Pin[0 0 29368 2000 29968 12850 "screw" "1" ""]
 
 	)
 
@@ -2653,7 +2653,7 @@ Layer(5 "silk")
 	Text[263000 180000 0 100 "http://iascaled.com" "clearline"]
 	Text[275000 164500 0 100 "Iowa Scaled" "clearline"]
 	Text[275000 171500 0 100 "Engineering" "clearline"]
-	Text[271000 155500 0 100 "MRB-BD42 v1.0" "clearline"]
+	Text[271000 155500 0 100 "MRB-BD42 v1.1" "clearline"]
 	Text[165500 138000 0 100 "(C) 2012" "clearline"]
 	Text[116500 124000 3 100 "PWR" "clearline"]
 	Text[103000 123500 3 100 "PKT" "clearline"]
