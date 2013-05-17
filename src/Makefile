@@ -35,11 +35,11 @@ BASE_NAME = mrb-bd42
 #FUSE_E  = 0x04
 
 # ATmega48P 20MHz @ 5.0V
-DEVICE  = atmega48p
+DEVICE  = atmega48
 F_CPU   = 20000000  # Hz
-FUSE_L  = 0xE7
+FUSE_L  = 0xD7
 FUSE_H  = 0xD4
-FUSE_E  = 0x04
+FUSE_E  = 0x01
 
 # ATmega328P 12MHz @ 3.3V
 #DEVICE  = atmega328p
@@ -69,11 +69,11 @@ INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h
 
 
 
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE) 
+AVRDUDE = avrdude -c usbtiny -F -p $(DEVICE) 
 
 OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
-CFLAGS  = $(INCLUDES) -Wall -Os
+CFLAGS  = $(INCLUDES) -Wall -O2
 
 COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 

@@ -24,26 +24,11 @@ LICENSE:
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
 #include <util/delay.h>
-
-#ifdef MRBEE
-// If wireless, redefine the common variables and functions
-#include "mrbee.h"
-#define mrbus_rx_buffer mrbee_rx_buffer
-#define mrbus_tx_buffer mrbee_tx_buffer
-#define mrbus_state mrbee_state
-#define MRBUS_TX_PKT_READY MRBEE_TX_PKT_READY
-#define MRBUS_RX_PKT_READY MRBEE_RX_PKT_READY
-#define mrbux_rx_buffer mrbee_rx_buffer
-#define mrbus_tx_buffer mrbee_tx_buffer
-#define mrbus_state mrbee_state
-#define mrbusInit mrbeeInit
-#define mrbusPacketTransmit mrbeePacketTransmit
-#endif
-
+#include <avr/wdt.h>
 #include "mrbus.h"
 
 // Global Variables
-uint8_t mrbus_dev_addr = 0;
+uint8_t mrbus_dev_addr = 0x03;
 uint8_t bd_int_status = 0;
 uint8_t bd_ex1_status = 0;
 uint8_t bd_ex2_status = 0;
@@ -51,8 +36,39 @@ uint8_t old_bd_int_status = 0;
 uint8_t old_bd_ex1_status = 0;
 uint8_t old_bd_ex2_status = 0;
 uint8_t ticks=0;
-uint16_t decisecs=0;
+volatile uint16_t decisecs=0;
 uint16_t update_decisecs=0;
+volatile uint16_t busVoltageAccum=0;
+volatile uint16_t busVoltage=0;
+volatile uint8_t busVoltageCount=0;
+
+void initializeADC()
+{
+	// Setup ADC for bus voltage monitoring
+	ADMUX  = 0x46;  // AVCC reference; ADC6 input
+	ADCSRA = _BV(ADATE) | _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 128 prescaler
+	ADCSRB = 0x00;
+	DIDR0  = 0x00;  // No digitals were harmed in the making of this ADC
+
+	busVoltage = 0;
+	busVoltageAccum = 0;
+	busVoltageCount = 0;
+	ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADIE) | _BV(ADIF);
+}
+
+ISR(ADC_vect)
+{
+	busVoltageAccum += ADC;
+	if (++busVoltageCount >= 64)
+	{
+		busVoltageAccum = busVoltageAccum / 64;
+        //At this point, we're at (Vbus/3) / 5 * 1024
+        //So multiply by 150, divide by 1024, or multiply by 75 and divide by 512
+        busVoltage = ((uint32_t)busVoltageAccum * 75) / 512;
+		busVoltageAccum = 0;
+		busVoltageCount = 0;
+	}
+}
 
 
 
@@ -160,6 +176,7 @@ void PktHandler(void)
 			case MRBUS_EE_DEVICE_UPDATE_H:
 				update_decisecs = (uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) 
 					| (((uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H)) << 8);
+				update_decisecs = max(1, update_decisecs);
 				break;
 		}
 
@@ -204,6 +221,18 @@ PktIgnore:
 
 void init(void)
 {
+	MCUSR = 0;
+#ifdef ENABLE_WATCHDOG
+	// If you don't want the watchdog to do system reset, remove this chunk of code
+	wdt_reset();
+	WDTCSR |= _BV(WDE) | _BV(WDCE);
+	WDTCSR = _BV(WDE) | _BV(WDP2) | _BV(WDP1); // Set the WDT to system reset and 1s timeout
+	wdt_reset();
+#else
+	wdt_reset();
+	wdt_disable();
+#endif
+
 	// Turn the correct bits to inputs
 	DDRB &= ~(PORTB_IN_BITS);
 	DDRC &= ~(PORTC_IN_BITS);
@@ -213,8 +242,18 @@ void init(void)
 	PORTB |= PORTB_IN_BITS;
 	PORTC |= PORTC_IN_BITS;
 	PORTD |= PORTD_IN_BITS;
-	// Initialize MRBus address from EEPROM address 1
+
+	initializeADC();
+
+	// Initialize MRBus address from EEPROM address 0
 	mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
+	// Bogus addresses, fix to default address
+	if (0xFF == mrbus_dev_addr || 0x00 == mrbus_dev_addr)
+	{
+		mrbus_dev_addr = 0x03;
+		eeprom_write_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR, mrbus_dev_addr);
+	}
+
 	update_decisecs = (uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) 
 		| (((uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H)) << 8);
 
@@ -245,24 +284,20 @@ int main(void)
 	mrbusInit();
 
 	// Do the initial read on the detectors and make sure the old variables match
-	readDetectors();
+	readDetectors();	
 	old_bd_int_status = bd_int_status;
 	old_bd_ex1_status = bd_ex1_status;
 	old_bd_ex2_status = bd_ex2_status;
 
 	sei();	
-
-	update_decisecs = 10;
-
+	
 	while (1)
 	{
-#ifdef MRBEE
-		mrbeePoll();
-#endif
 		// Handle any packets that may have come in
 		if (mrbus_state & MRBUS_RX_PKT_READY)
 			PktHandler();
 
+		wdt_reset();
 		readDetectors();
 
 		if ( (decisecs >=	update_decisecs) || (bd_int_status ^ old_bd_int_status) || (bd_ex1_status ^ old_bd_ex1_status) || (bd_ex2_status ^ old_bd_ex2_status) )
@@ -279,10 +314,11 @@ int main(void)
 		{
 			mrbus_tx_buffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
-			mrbus_tx_buffer[MRBUS_PKT_LEN] = 8;			
+			mrbus_tx_buffer[MRBUS_PKT_LEN] = 9;			
 			mrbus_tx_buffer[5] = 'S';
 			mrbus_tx_buffer[6] = bd_int_status;
 			mrbus_tx_buffer[7] = (bd_ex1_status & 0x0F) | ((bd_ex2_status<<4) & 0xF0);
+			mrbus_tx_buffer[8] = busVoltage;
 			mrbus_state |= MRBUS_TX_PKT_READY;
 			changed = 0;
 		}
@@ -290,7 +326,9 @@ int main(void)
 		// If we have a packet to be transmitted, try to send it here
 		while(mrbus_state & MRBUS_TX_PKT_READY)
 		{
-			uint8_t bus_countdown;
+			uint8_t bus_countdown = 20;
+
+			wdt_reset();
 
 			// Even while we're sitting here trying to transmit, keep handling
 			// any packets we're receiving so that we keep up with the current state of the
@@ -306,7 +344,6 @@ int main(void)
 				break;
 			}
 
-#ifndef MRBEE
 			// If we're here, we failed to start transmission due to somebody else transmitting
 			// Given that our transmit buffer is full, priority one should be getting that data onto
 			// the bus so we can start using our tx buffer again.  So we stay in the while loop, trying
@@ -319,12 +356,10 @@ int main(void)
 			bus_countdown = 20;
 			while (bus_countdown-- > 0 && MRBUS_ACTIVITY_RX_COMPLETE != mrbus_activity)
 			{
-				//clrwdt();
 				_delay_ms(1);
 				if (mrbus_state & MRBUS_RX_PKT_READY) 
 					PktHandler();
 			}
-#endif
 		}
 	}
 }
