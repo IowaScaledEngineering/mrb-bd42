@@ -302,7 +302,10 @@ int main(void)
 
 		if ( (decisecs >=	update_decisecs) || (bd_int_status ^ old_bd_int_status) || (bd_ex1_status ^ old_bd_ex1_status) || (bd_ex2_status ^ old_bd_ex2_status) )
 		{
-			decisecs = 0;
+			ATOMIC_BLOCK(ATOMIC_FORCEON)
+			{
+				decisecs = 0;
+			}
 			changed = 1;
 			old_bd_int_status = bd_int_status;
 			old_bd_ex1_status = bd_ex1_status;
@@ -356,6 +359,7 @@ int main(void)
 			bus_countdown = 20;
 			while (bus_countdown-- > 0 && MRBUS_ACTIVITY_RX_COMPLETE != mrbus_activity)
 			{
+				wdt_reset();
 				_delay_ms(1);
 				if (mrbus_state & MRBUS_RX_PKT_READY) 
 					PktHandler();
