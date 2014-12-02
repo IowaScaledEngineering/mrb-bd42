@@ -1,8 +1,8 @@
 #*************************************************************************
-#Title:    MRB-BD42 Makefile
+#Title:    MRB-AVRTEMPLATE Makefile
 #Authors:  Michael Petersen <railfan@drgw.net>
 #          Nathan Holmes <maverick@drgw.net>
-#File:     Makefile
+#File:     MRB-AVRTEMPLATE Makefile
 #License:  GNU General Public License v3
 #
 #LICENSE:
@@ -27,6 +27,12 @@
 
 BASE_NAME = mrb-bd42
 
+DEVICE  = atmega48
+F_CPU   = 20000000  # Hz
+FUSE_L  = 0xD7
+FUSE_H  = 0xD4
+FUSE_E  = 0x00
+
 # ATmega164P 20MHz @ 5.0V
 #DEVICE  = atmega164p
 #F_CPU   = 20000000  # Hz
@@ -34,12 +40,12 @@ BASE_NAME = mrb-bd42
 #FUSE_H  = 0xD1
 #FUSE_E  = 0x04
 
-# ATmega48P 20MHz @ 5.0V
-DEVICE  = atmega48
-F_CPU   = 20000000  # Hz
-FUSE_L  = 0xD7
-FUSE_H  = 0xD4
-FUSE_E  = 0x01
+# ATmega328P 20MHz @ 5.0V
+#DEVICE  = atmega328p
+#F_CPU   = 20000000  # Hz
+#FUSE_L  = 0xD7
+#FUSE_H  = 0xD1
+#FUSE_E  = 0x04
 
 # ATmega328P 12MHz @ 3.3V
 #DEVICE  = atmega328p
@@ -55,27 +61,43 @@ FUSE_E  = 0x01
 #FUSE_H  = 0xD1
 #FUSE_E  = 0x05
 
+# ATmega48 20MHz @ 5.0V
+#DEVICE  = atmega48
+#F_CPU   = 20000000  # Hz
+#FUSE_L  = 0xD7
+#FUSE_H  = 0xD4
+#FUSE_E  = 0x00
 
+# ATmega48 11.0592MHz @ 3.3V
+#DEVICE  = atmega48
+#F_CPU   = 11059200  # Hz
+#FUSE_L  = 0xD7
+#FUSE_H  = 0xD5
+#FUSE_E  = 0x00
+SVNREV := -D'SVN_REV=$(shell svnversion -n $(BASE_NAME).c | tr -d MSP)L'
 
 # MRBus
-DEFINES = -DMRBUS
-SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c
-INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h
+DEFINES := -DMRBUS $(SVNREV)
+SRCS = $(BASE_NAME).c ../../mrbus2/src/mrbus-avr.c ../../mrbus2/src/mrbus-crc.c ../../mrbus2/src/mrbus-queue.c
+INCS = ../../mrbus2/src/mrbus.h ../../mrbus2/src/mrbus-avr.h
 
 # MRBee
-#DEFINES = -DMRBEE -DMRBEE_BAUD=115200
+#DEFINES = -DMRBEE -DMRBEE_BAUD=115200 $(SVNREV)
 #SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 #INCS = ../../mrbus/src/mrbus.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
 
-
-
-AVRDUDE = avrdude -c usbtiny -F -p $(DEVICE) 
+AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
+AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE) -B32
 
 OBJS = ${SRCS:.c=.o}
-INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
-CFLAGS  = $(INCLUDES) -Wall -O2
+INCLUDES = -I. -I../../mrbus2/src 
 
-COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
+CFLAGS = $(INCLUDES) -Wall -O2 -std=gnu99 -ffunction-sections -fdata-sections
+LDFLAGS = -Wl,-gc-sections
+
+COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) $(LDFLAGS) -mmcu=$(DEVICE)
+
+
 
 # -E -dM options preprocess only and output results of #define
 #COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM
@@ -86,21 +108,29 @@ help:
 	@echo "make fuse ...... flash the fuses"
 	@echo "make program ... flash fuses and firmware"
 	@echo "make read ...... read the fuses"
+	@echo "make size ...... memory usage"
 	@echo "make clean ..... delete objects and hex file"
 	@echo "make release.... produce release tarball"
+	@echo "make terminal... open up avrdude terminal"
 
 hex: $(BASE_NAME).hex
 
 program: fuse flash
 
+terminal:
+	$(AVRDUDE_SLOW) -t
+
 # rule for programming fuse bits:
 fuse:
 	@[ "$(FUSE_H)" != "" -a "$(FUSE_L)" != "" -a "$(FUSE_E)" != "" ] || \
 		{ echo "*** Invalid Fuse values."; exit 1; }
-	$(AVRDUDE) -U hfuse:w:$(FUSE_H):m -U lfuse:w:$(FUSE_L):m -U efuse:w:$(FUSE_E):m
+	$(AVRDUDE_SLOW) -U hfuse:w:$(FUSE_H):m -U lfuse:w:$(FUSE_L):m -U efuse:w:$(FUSE_E):m
 
 read:
 	$(AVRDUDE) -v
+
+size:
+	avr-size -C --mcu=$(DEVICE) $(BASE_NAME).elf
 
 # rule for uploading firmware:
 flash: $(BASE_NAME).hex
