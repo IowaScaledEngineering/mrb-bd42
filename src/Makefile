@@ -27,6 +27,11 @@
 
 BASE_NAME = mrb-bd42
 
+PROGRAMMER_TYPE=avrispmkii
+#PROGRAMMER_TYPE=usbtiny
+PROGRAMMER_PORT=usb
+
+
 DEVICE  = atmega48
 F_CPU   = 20000000  # Hz
 FUSE_L  = 0xD7
@@ -86,8 +91,8 @@ INCS = ../../mrbus2/src/mrbus.h ../../mrbus2/src/mrbus-avr.h
 #SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 #INCS = ../../mrbus/src/mrbus.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
 
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
-AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE) -B32
+AVRDUDE = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B1 -F
+AVRDUDE_SLOW = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B32
 
 OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus2/src 
