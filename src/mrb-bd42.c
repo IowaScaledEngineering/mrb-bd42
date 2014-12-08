@@ -43,10 +43,9 @@ uint8_t pkt_count = 0;
 // If you do remove it, be sure to yank the interrupt handler and ticks/secs as well
 // and the call to this function in the main function
 
-volatile uint8_t ticks;
+volatile uint8_t ticks = 0;
 volatile uint16_t decisecs=0;
 volatile uint16_t update_decisecs=10;
-
 volatile uint8_t eventFlags = 0;
 
 #define EVENT_DO_BD_READ 0x01
@@ -65,10 +64,9 @@ void initialize100HzTimer(void)
 
 ISR(TIMER0_COMPA_vect)
 {
-	eventFlags |= EVENT_DO_BD_READ;
-
 	if (++ticks >= 10)
 	{
+		eventFlags |= EVENT_DO_BD_READ;
 		ticks = 0;
 		decisecs++;
 	}
@@ -102,9 +100,9 @@ ISR(ADC_vect)
 	if (++busVoltageCount >= 64)
 	{
 		busVoltageAccum = busVoltageAccum / 64;
-		//At this point, we're at (Vbus/6) / 5 * 1024
-		//So multiply by 300, divide by 1024, or multiply by 150 and divide by 512
-		busVoltage = ((uint32_t)busVoltageAccum * 150) / 512;
+		//At this point, we're at (Vbus/3) / 5 * 1024
+		//So multiply by 150, divide by 1024, or multiply by 75 and divide by 512
+		busVoltage = ((uint32_t)busVoltageAccum * 75) / 512;		
 		busVoltageAccum = 0;
 		busVoltageCount = 0;
 	}
@@ -243,6 +241,8 @@ PktIgnore:
 	// This section resets anything that needs to be reset in order to allow us to receive
 	// another packet.  Typically, that's just clearing the MRBUS_RX_PKT_READY flag to 
 	// indicate to the core library that the mrbus_rx_buffer is clear.
+	
+	
 	return;	
 }
 
@@ -298,8 +298,6 @@ void init(void)
 	}
 	// This line assures that update_decisecs is at least 1
 	update_decisecs = max(1, update_decisecs);
-
-	initializeADC();
 }
 
 #define MRBUS_TX_BUFFER_DEPTH 4
@@ -308,24 +306,26 @@ void init(void)
 MRBusPacket mrbusTxPktBufferArray[MRBUS_TX_BUFFER_DEPTH];
 MRBusPacket mrbusRxPktBufferArray[MRBUS_RX_BUFFER_DEPTH];
 
-uint16_t bd_status=0, old_bd_status = 0;
-
-void readDetectors(void)
+uint16_t readDetectors(void)
 {
 	uint8_t bd_int_status = (PIND>>4) & 0x0F;
 	uint8_t bd_ext1_status = (PINC & 0x0F);
 	uint8_t bd_ext2_status = (PINB & 0x07) | ((PINC>>1) & 0x08);
 	
-	bd_status = ((uint16_t)bd_int_status)<<8;
+	uint16_t bd_status = ((uint16_t)bd_int_status)<<8;
 	bd_status |= bd_ext1_status<<4;
 	bd_status |= bd_ext2_status;
+	
+	return(bd_status);
 }
 
 int main(void)
 {
 	uint8_t changed = 0;
+	uint16_t bd_status=0x00FF, old_bd_status = 0x00FF;
 	// Application initialization
 	init();
+	initializeADC();
 
 	// Initialize a 100 Hz timer.  See the definition for this function - you can
 	// remove it if you don't use it.
@@ -345,27 +345,33 @@ int main(void)
 		// Handle any packets that may have come in
 		if (mrbusPktQueueDepth(&mrbusRxQueue))
 			PktHandler();
-			
+
 		if (eventFlags & EVENT_DO_BD_READ)
 		{
-			readDetectors();
+			bd_status = readDetectors();
+			if (bd_status != old_bd_status)
+			{
+				changed = 1;
+				old_bd_status = bd_status;
+			}
+			
 			eventFlags &= ~(EVENT_DO_BD_READ);
 		}
-			
-		if ( (decisecs >=	update_decisecs) || (bd_status ^ old_bd_status) )
+
+		if (decisecs >= update_decisecs)		
 		{
 			ATOMIC_BLOCK(ATOMIC_FORCEON)
 			{
 				decisecs -= update_decisecs;
 			}
 			changed = 1;
-			old_bd_status = bd_status;
 		}
 
 		// If we need to send a packet and the TX queue isn't full...
 		if (changed && !(mrbusPktQueueFull(&mrbusTxQueue)))
 		{
-			uint8_t txBuffer[MRBUS_BUFFER_SIZE];
+			uint8_t txBuffer[10];
+
 			txBuffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 			txBuffer[MRBUS_PKT_DEST] = 0xFF;
 			txBuffer[MRBUS_PKT_LEN] = 9;
@@ -373,6 +379,7 @@ int main(void)
 			txBuffer[6] = 0x0F & (bd_status>>8);
 			txBuffer[7] = bd_status & 0xFF;
 			txBuffer[8] = busVoltage;
+
 			mrbusPktQueuePush(&mrbusTxQueue, txBuffer, txBuffer[MRBUS_PKT_LEN]);
 			changed = 0;
 		}
