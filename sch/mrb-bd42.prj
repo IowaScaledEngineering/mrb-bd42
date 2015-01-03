@@ -1,6 +1,6 @@
 schematics mrb-bd42.sch
 output-name ../pcb/mrb-bd42
 skip-m4
-elements-dir ../../../footprints
+elements-dir ../../../iascaled-internal/design/footprints
 
 
