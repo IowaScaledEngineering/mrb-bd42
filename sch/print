@@ -1,6 +1,0 @@
-#!/bin/bash
-
-gschem -p -o mrb-bd42.ps -s /usr/share/gEDA/scheme/print.scm mrb-bd42.sch 
-ps2pdf mrb-bd42.ps
-rm mrb-bd42.ps
-acroread mrb-bd42.pdf
