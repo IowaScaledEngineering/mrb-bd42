@@ -1,11 +1,11 @@
 /*************************************************************************
-Title:    MRBus AVR Template
+Title:    MRBus MRB-BD42 firmware
 Authors:  Nathan D. Holmes <maverick@drgw.net>
 File:     $Id: $
 License:  GNU General Public License v3
 
 LICENSE:
-    Copyright (C) 2012 Nathan Holmes
+    Copyright (C) 2015 Nathan Holmes
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -250,6 +250,8 @@ PktIgnore:
 #define PORTC_IN_BITS 0x1F
 #define PORTD_IN_BITS 0xF0
 
+#define NOTCLR PD3
+
 void init(void)
 {
 	// FIXME:  Do any initialization you need to do here.
@@ -271,12 +273,14 @@ void init(void)
 	DDRB &= ~(PORTB_IN_BITS);
 	DDRC &= ~(PORTC_IN_BITS);
 	DDRD &= ~(PORTD_IN_BITS);
-
+	DDRD |= _BV(NOTCLR);
+	
 	// Turn on pull-ups
 	PORTB |= PORTB_IN_BITS;
 	PORTC |= PORTC_IN_BITS;
 	PORTD |= PORTD_IN_BITS;
 
+	PORTD |= _BV(NOTCLR);
 
 	// Initialize MRBus address from EEPROM
 	mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
