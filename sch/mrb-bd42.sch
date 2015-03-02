@@ -170,17 +170,6 @@ T 60100 42800 9 10 1 0 0 2 3
 Notes:
 1) All caps X5R or X7R, 6.3V or better ceramic unless otherwise noted.
 
-C 45900 59900 1 0 0 schottky-1.sym
-{
-T 46222 60572 5 10 0 0 0 0 1
-device=DIODE
-T 46200 60400 5 10 1 1 0 0 1
-refdes=D7
-T 46241 60732 5 10 0 1 0 0 1
-footprint=SOD123
-T 45700 60700 5 10 1 1 0 0 1
-model=MBR0520LT1G
-}
 C 56800 58800 1 90 0 resistor-1.sym
 {
 T 56400 59100 5 10 0 0 90 0 1
@@ -1115,5 +1104,14 @@ device=MMBD4148
 T 43300 39600 5 10 1 1 90 0 1
 refdes=D6
 T 43800 39300 5 10 0 0 0 0 1
+footprint=SOD123
+}
+C 45900 59900 1 0 0 mbr0540-1.sym
+{
+T 45722 59572 5 10 1 1 0 0 1
+device=MBR0520LT1G
+T 46200 60400 5 10 1 1 0 0 1
+refdes=D7
+T 46241 60732 5 10 0 1 0 0 1
 footprint=SOD123
 }
