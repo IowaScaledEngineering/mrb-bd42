@@ -44,7 +44,9 @@ uint8_t externalBDStatus = 0;
 uint8_t channelOnDelayCount[4] = {0, 0, 0, 0};
 uint8_t channelOffDelayCount[4] = {0, 0, 0, 0};
 uint8_t channelOnDelay[4] = {4, 4, 4, 4};
-uint8_t channelOffDelay[4] = {25, 25, 25, 25};	
+uint8_t channelOffDelay[4] = {25, 25, 25, 25};
+
+uint16_t eepromThreshold[4];
 
 #define MRBUS_EE_CHANNEL0_ON_DELAY  0x10
 #define MRBUS_EE_CHANNEL1_ON_DELAY  0x11
@@ -55,6 +57,9 @@ uint8_t channelOffDelay[4] = {25, 25, 25, 25};
 #define MRBUS_EE_CHANNEL1_OFF_DELAY  0x21
 #define MRBUS_EE_CHANNEL2_OFF_DELAY  0x22
 #define MRBUS_EE_CHANNEL3_OFF_DELAY  0x23
+
+#define MRBUS_EE_CHANNEL0_THRESHOLD_H 0x30
+#define MRBUS_EE_CHANNEL0_THRESHOLD_L 0x31
 
 volatile uint16_t adcValue[8];
 
@@ -361,6 +366,17 @@ void init(void)
 			eeprom_write_byte((uint8_t*)(MRBUS_EE_CHANNEL0_OFF_DELAY + channel), 25);
 			channelOffDelay[channel] = eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_OFF_DELAY + channel));			
 		}
+		
+		eepromThreshold[channel] = (uint16_t)eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_L + channel*2)) 
+		| (((uint16_t)eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_H + channel * 2))) << 8);
+		if (eepromThreshold[channel] > 1023)
+		{
+			eeprom_write_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_L + channel*2), 0xFF);
+			eeprom_write_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_H + channel*2), 0xFF);
+			eepromThreshold[channel] = (uint16_t)eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_L + channel*2)) 
+			| (((uint16_t)eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_THRESHOLD_H + channel * 2))) << 8);
+		}
+		
 	}
 }
 
@@ -369,7 +385,7 @@ void readInternalDetectors(void)
 {	
 	for(uint8_t channel = 0; channel < 4; channel++)
 	{
-		uint16_t threshold = adcValue[channel+4];
+		uint16_t threshold = (0xFFFF == eepromThreshold[channel])?adcValue[channel+4]:eepromThreshold[channel];
 		uint8_t channelMask = (1<<channel);
 
 		// Introduce a bit of hysteresis. 
