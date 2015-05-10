@@ -252,13 +252,13 @@ void PktHandler(void)
 		txBuffer[MRBUS_PKT_LEN] = 16;
 		txBuffer[MRBUS_PKT_TYPE] = 'v';
 		txBuffer[6]  = MRBUS_VERSION_WIRED;
-#ifndef SVN_REV
-// This stubs in SVN_REV to 0 in case the make system isn't providing the current SVN revisions
-#define SVN_REV=0L
-#endif
-		txBuffer[7]  = 0xFF & ((uint32_t)(SVN_REV))>>16; // Software Revision
-		txBuffer[8]  = 0xFF & ((uint32_t)(SVN_REV))>>8; // Software Revision
-		txBuffer[9]  = 0xFF & (SVN_REV); // Software Revision
+#ifndef GIT_REV
+// This stubs in GIT_REV to 0 in case the make system isn't providing the current SVN revisions
+#define GIT_REV=0L
+#endif				
+		txBuffer[7]  = 0xFF & ((uint32_t)(GIT_REV))>>16; // Software Revision
+		txBuffer[8]  = 0xFF & ((uint32_t)(GIT_REV))>>8; // Software Revision
+		txBuffer[9]  = 0xFF & (GIT_REV); // Software Revision
 		txBuffer[10]  = 3; // Hardware Major Revision
 		txBuffer[11]  = 0; // Hardware Minor Revision
 		txBuffer[12] = 'B';

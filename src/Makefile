@@ -31,6 +31,8 @@ PROGRAMMER_TYPE=avrispmkii
 #PROGRAMMER_TYPE=usbtiny
 PROGRAMMER_PORT=usb
 
+MRBUS_LIB=./mrbus
+
 # ATmega328P 20MHz @ 5.0V
 DEVICE  = atmega328p
 F_CPU   = 20000000  # Hz
@@ -38,18 +40,19 @@ FUSE_L  = 0xD7
 FUSE_H  = 0xD1
 FUSE_E  = 0x04
 
-SVNREV := 'SVN_REV=$(shell svnversion -n $(BASE_NAME).c | tr -d MSP)L'
 GITREV := 'GIT_REV=0x$(shell git rev-parse --short=6 HEAD)L'
 # MRBus
-DEFINES := -DMRBUS -D$(SVNREV) -D$(GITREV) -DENABLE_WATCHDOG
-SRCS = $(BASE_NAME).c ../../mrbus2/src/mrbus-avr.c ../../mrbus2/src/mrbus-crc.c ../../mrbus2/src/mrbus-queue.c
-INCS = ../../mrbus2/src/mrbus.h ../../mrbus2/src/mrbus-avr.h
+
+
+DEFINES := -DMRBUS -D$(GITREV) -DENABLE_WATCHDOG
+SRCS = $(BASE_NAME).c $(MRBUS_LIB)/src/mrbus-avr.c $(MRBUS_LIB)/src/mrbus-crc.c $(MRBUS_LIB)/src/mrbus-queue.c
+INCS = $(MRBUS_LIB)/src/mrbus.h $(MRBUS_LIB)/src/mrbus-avr.h
 
 AVRDUDE = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B1 -F
 AVRDUDE_SLOW = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B32 -F
 
 OBJS = ${SRCS:.c=.o}
-INCLUDES = -I. -I../../mrbus2/src 
+INCLUDES = -I. -I$(MRBUS_LIB)/src 
 
 CFLAGS = $(INCLUDES) -Wall -O2 -std=gnu99 -ffunction-sections -fdata-sections
 LDFLAGS = -Wl,-gc-sections
