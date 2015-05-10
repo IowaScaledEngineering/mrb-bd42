@@ -1,12 +1,12 @@
 #*************************************************************************
-#Title:    MRB-AVRTEMPLATE Makefile
+#Title:    MRB-BD42 v3 Makefile
 #Authors:  Michael Petersen <railfan@drgw.net>
 #          Nathan Holmes <maverick@drgw.net>
 #File:     MRB-AVRTEMPLATE Makefile
 #License:  GNU General Public License v3
 #
 #LICENSE:
-#    Copyright (C) 2012 Nathan Holmes and Michael Petersen
+#    Copyright (C) 2015 Nathan Holmes and Michael Petersen
 #
 #    Derived from example WinAVR project Makefile
 #
@@ -31,68 +31,22 @@ PROGRAMMER_TYPE=avrispmkii
 #PROGRAMMER_TYPE=usbtiny
 PROGRAMMER_PORT=usb
 
-
-DEVICE  = atmega48
+# ATmega328P 20MHz @ 5.0V
+DEVICE  = atmega328p
 F_CPU   = 20000000  # Hz
 FUSE_L  = 0xD7
-FUSE_H  = 0xD4
-FUSE_E  = 0x00
+FUSE_H  = 0xD1
+FUSE_E  = 0x04
 
-# ATmega164P 20MHz @ 5.0V
-#DEVICE  = atmega164p
-#F_CPU   = 20000000  # Hz
-#FUSE_L  = 0xD7
-#FUSE_H  = 0xD1
-#FUSE_E  = 0x04
-
-# ATmega328P 20MHz @ 5.0V
-#DEVICE  = atmega328p
-#F_CPU   = 20000000  # Hz
-#FUSE_L  = 0xD7
-#FUSE_H  = 0xD1
-#FUSE_E  = 0x04
-
-# ATmega328P 12MHz @ 3.3V
-#DEVICE  = atmega328p
-#F_CPU   = 12000000  # Hz
-#FUSE_L  = 0xD7
-#FUSE_H  = 0xD1
-#FUSE_E  = 0x05
-
-# ATmega328P 3.579545MHz @ 3.3V
-#DEVICE  = atmega328p
-#F_CPU   = 3579545   # Hz
-#FUSE_L  = 0x97      # Clock output on PB0 (Debug)
-#FUSE_H  = 0xD1
-#FUSE_E  = 0x05
-
-# ATmega48 20MHz @ 5.0V
-#DEVICE  = atmega48
-#F_CPU   = 20000000  # Hz
-#FUSE_L  = 0xD7
-#FUSE_H  = 0xD4
-#FUSE_E  = 0x00
-
-# ATmega48 11.0592MHz @ 3.3V
-#DEVICE  = atmega48
-#F_CPU   = 11059200  # Hz
-#FUSE_L  = 0xD7
-#FUSE_H  = 0xD5
-#FUSE_E  = 0x00
-SVNREV := -D'SVN_REV=$(shell svnversion -n $(BASE_NAME).c | tr -d MSP)L'
-
+SVNREV := 'SVN_REV=$(shell svnversion -n $(BASE_NAME).c | tr -d MSP)L'
+GITREV := 'GIT_REV=0x$(shell git rev-parse --short=6 HEAD)L'
 # MRBus
-DEFINES := -DMRBUS $(SVNREV)
+DEFINES := -DMRBUS -D$(SVNREV) -D$(GITREV) -DENABLE_WATCHDOG
 SRCS = $(BASE_NAME).c ../../mrbus2/src/mrbus-avr.c ../../mrbus2/src/mrbus-crc.c ../../mrbus2/src/mrbus-queue.c
 INCS = ../../mrbus2/src/mrbus.h ../../mrbus2/src/mrbus-avr.h
 
-# MRBee
-#DEFINES = -DMRBEE -DMRBEE_BAUD=115200 $(SVNREV)
-#SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
-#INCS = ../../mrbus/src/mrbus.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
-
 AVRDUDE = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B1 -F
-AVRDUDE_SLOW = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B32
+AVRDUDE_SLOW = avrdude -P $(PROGRAMMER_PORT) -c $(PROGRAMMER_TYPE) -p $(DEVICE) -B32 -F
 
 OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus2/src 

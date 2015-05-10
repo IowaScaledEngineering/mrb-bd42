@@ -1,5 +1,5 @@
 /*************************************************************************
-Title:    MRBus MRB-BD42 firmware
+Title:    MRBus MRB-BD42 v3 firmware
 Authors:  Nathan D. Holmes <maverick@drgw.net>
 File:     $Id: $
 License:  GNU General Public License v3
@@ -28,9 +28,35 @@ LICENSE:
 
 #include "mrbus.h"
 
-uint8_t mrbus_dev_addr = 0;
+#define MRBUS_TX_BUFFER_DEPTH 4
+#define MRBUS_RX_BUFFER_DEPTH 4
 
-uint8_t pkt_count = 0;
+MRBusPacket mrbusTxPktBufferArray[MRBUS_TX_BUFFER_DEPTH];
+MRBusPacket mrbusRxPktBufferArray[MRBUS_RX_BUFFER_DEPTH];
+
+uint8_t mrbus_dev_addr = 0;
+volatile uint8_t eventFlags = 0;
+#define EVENT_DO_BD_READ 0x01
+
+uint8_t internalBDStatus = 0;
+uint8_t externalBDStatus = 0;
+
+uint8_t channelOnDelayCount[4] = {0, 0, 0, 0};
+uint8_t channelOffDelayCount[4] = {0, 0, 0, 0};
+uint8_t channelOnDelay[4] = {4, 4, 4, 4};
+uint8_t channelOffDelay[4] = {25, 25, 25, 25};	
+
+#define MRBUS_EE_CHANNEL0_ON_DELAY  0x10
+#define MRBUS_EE_CHANNEL1_ON_DELAY  0x11
+#define MRBUS_EE_CHANNEL2_ON_DELAY  0x12
+#define MRBUS_EE_CHANNEL3_ON_DELAY  0x13
+
+#define MRBUS_EE_CHANNEL0_OFF_DELAY  0x20
+#define MRBUS_EE_CHANNEL1_OFF_DELAY  0x21
+#define MRBUS_EE_CHANNEL2_OFF_DELAY  0x22
+#define MRBUS_EE_CHANNEL3_OFF_DELAY  0x23
+
+volatile uint16_t adcValue[8];
 
 
 // ******** Start 100 Hz Timer, 0.16% error version (Timer 0)
@@ -46,9 +72,6 @@ uint8_t pkt_count = 0;
 volatile uint8_t ticks = 0;
 volatile uint16_t decisecs=0;
 volatile uint16_t update_decisecs=10;
-volatile uint8_t eventFlags = 0;
-
-#define EVENT_DO_BD_READ 0x01
 
 void initialize100HzTimer(void)
 {
@@ -62,49 +85,79 @@ void initialize100HzTimer(void)
 	TIMSK0 |= _BV(OCIE0A);
 }
 
+
 ISR(TIMER0_COMPA_vect)
 {
+	uint8_t newLedValue;
+	
 	if (++ticks >= 10)
 	{
-		eventFlags |= EVENT_DO_BD_READ;
 		ticks = 0;
 		decisecs++;
 	}
+
+	if (ticks & 0x01)
+	{
+		newLedValue = 0xE0;
+	
+		if (internalBDStatus & 0x01)
+			newLedValue &= ~0x20;
+		if (internalBDStatus & 0x02)
+			newLedValue &= ~0x40;
+	} else {
+		newLedValue = 0x00;
+
+		if (internalBDStatus & 0x04)
+			newLedValue |= 0x20;
+		if (internalBDStatus & 0x08)
+			newLedValue |= 0x40;
+	}
+
+	PORTD = (PORTD & 0x1F) | newLedValue;
 }
 
 // End of 100Hz timer
 
-
-// **** Bus Voltage Monitor
-
-volatile uint8_t busVoltage=0;
-
 void initializeADC()
 {
-	// Setup ADC for bus voltage monitoring
-	ADMUX  = 0x46;  // AVCC reference; ADC6 input
-	ADCSRA = _BV(ADATE) | _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 128 prescaler
-	ADCSRB = 0x00;
-	DIDR0  = 0x00;  // No digitals were harmed in the making of this ADC
+	for(uint8_t i=0; i<8; i++)
+		adcValue[i] = 0;
 
-	busVoltage = 0;
+	// Setup ADC for bus voltage monitoring
+	ADMUX  = 0x40;  // AVCC reference, ADC0 starting channel
+	ADCSRA = _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 128 prescaler
+	ADCSRB = 0x00;
+	DIDR0  = 0x3F;  // Turn all ADC pins 0-5 into analog inputs
 	ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADIE) | _BV(ADIF);
 }
 
 ISR(ADC_vect)
 {
-	static uint16_t busVoltageAccum=0;
-	static uint8_t busVoltageCount=0;
-
-	busVoltageAccum += ADC;
-	if (++busVoltageCount >= 64)
+	static uint8_t workingChannel = 0;
+	static uint16_t accumulator = 0;
+	static uint8_t count = 0;
+	
+	accumulator += ADC;
+	if (++count >= 64)
 	{
-		busVoltageAccum = busVoltageAccum / 64;
-		//At this point, we're at (Vbus/3) / 5 * 1024
-		//So multiply by 150, divide by 1024, or multiply by 75 and divide by 512
-		busVoltage = ((uint32_t)busVoltageAccum * 75) / 512;		
-		busVoltageAccum = 0;
-		busVoltageCount = 0;
+		adcValue[workingChannel] = accumulator / 64;
+		accumulator = 0;
+		count = 0;
+		workingChannel++;
+		
+		ADMUX = (ADMUX & 0xF0) | (workingChannel & 0x07);
+		
+		if (8 == workingChannel)
+		{
+			workingChannel = 0;
+			eventFlags |= EVENT_DO_BD_READ;
+		}
+	}
+
+	if (0 == (eventFlags & EVENT_DO_BD_READ))
+	{
+		// Trigger the next conversion.  Not using auto-trigger so that we can safely change channels
+		ADCSRA |= _BV(ADSC);
 	}
 }
 
@@ -206,7 +259,7 @@ void PktHandler(void)
 		txBuffer[7]  = 0xFF & ((uint32_t)(SVN_REV))>>16; // Software Revision
 		txBuffer[8]  = 0xFF & ((uint32_t)(SVN_REV))>>8; // Software Revision
 		txBuffer[9]  = 0xFF & (SVN_REV); // Software Revision
-		txBuffer[10]  = 1; // Hardware Major Revision
+		txBuffer[10]  = 3; // Hardware Major Revision
 		txBuffer[11]  = 0; // Hardware Minor Revision
 		txBuffer[12] = 'B';
 		txBuffer[13] = 'D';
@@ -227,9 +280,6 @@ void PktHandler(void)
 		sei();
 	}
 
-	// FIXME:  Insert code here to handle incoming packets specific
-	// to the device.
-
 	//*************** END PACKET HANDLER  ***************
 
 	
@@ -246,16 +296,12 @@ PktIgnore:
 	return;	
 }
 
-#define PORTB_IN_BITS 0x07
-#define PORTC_IN_BITS 0x1F
-#define PORTD_IN_BITS 0xF0
-
-#define NOTCLR PD3
+#define PORTB_IN_BITS 0x3F
+#define PORTC_IN_BITS 0xFF
+#define PORTD_IN_BITS 0x18
 
 void init(void)
 {
-	// FIXME:  Do any initialization you need to do here.
-	
 	// Clear watchdog (in the case of an 'X' packet reset)
 	MCUSR = 0;
 #ifdef ENABLE_WATCHDOG
@@ -270,17 +316,14 @@ void init(void)
 #endif	
 
 	// Turn the correct bits to inputs
-	DDRB &= ~(PORTB_IN_BITS);
-	DDRC &= ~(PORTC_IN_BITS);
-	DDRD &= ~(PORTD_IN_BITS);
-	DDRD |= _BV(NOTCLR);
+	DDRB = ~(PORTB_IN_BITS);
+	DDRC = 0xFF & ~(PORTC_IN_BITS);
+	DDRD = ~(PORTD_IN_BITS);
 	
 	// Turn on pull-ups
 	PORTB |= PORTB_IN_BITS;
 	PORTC |= PORTC_IN_BITS;
 	PORTD |= PORTD_IN_BITS;
-
-	PORTD |= _BV(NOTCLR);
 
 	// Initialize MRBus address from EEPROM
 	mrbus_dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
@@ -302,31 +345,135 @@ void init(void)
 	}
 	// This line assures that update_decisecs is at least 1
 	update_decisecs = max(1, update_decisecs);
+
+	for (uint8_t channel = 0; channel < 4; channel++)
+	{
+		channelOnDelay[channel] = eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_ON_DELAY + channel));
+		if (0xFF == channelOnDelay[channel] || 0x00 == channelOnDelay[channel])
+		{
+			eeprom_write_byte((uint8_t*)(MRBUS_EE_CHANNEL0_ON_DELAY + channel), 4);
+			channelOnDelay[channel] = eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_ON_DELAY + channel));			
+		}
+
+		channelOffDelay[channel] = eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_OFF_DELAY + channel));
+		if (0xFF == channelOffDelay[channel] || 0x00 == channelOnDelay[channel])
+		{
+			eeprom_write_byte((uint8_t*)(MRBUS_EE_CHANNEL0_OFF_DELAY + channel), 25);
+			channelOffDelay[channel] = eeprom_read_byte((uint8_t*)(MRBUS_EE_CHANNEL0_OFF_DELAY + channel));			
+		}
+	}
 }
 
-#define MRBUS_TX_BUFFER_DEPTH 4
-#define MRBUS_RX_BUFFER_DEPTH 4
 
-MRBusPacket mrbusTxPktBufferArray[MRBUS_TX_BUFFER_DEPTH];
-MRBusPacket mrbusRxPktBufferArray[MRBUS_RX_BUFFER_DEPTH];
+void readInternalDetectors(void)
+{	
+	for(uint8_t channel = 0; channel < 4; channel++)
+	{
+		uint16_t threshold = adcValue[channel+4];
+		uint8_t channelMask = (1<<channel);
 
-uint16_t readDetectors(void)
+		// Introduce a bit of hysteresis. 
+		// If the channel is currently "on", lower the threshold by 5 counts
+		// If the channel is currently "off", raise the threshold by 5
+		if ((internalBDStatus & channelMask) && (threshold >= 5))
+		{
+			threshold -= 5;
+		} 
+		else if ( (0 == (internalBDStatus & channelMask)) && (threshold <= (1023-5)) )
+		{
+			threshold += 5;
+		}
+	
+		if (adcValue[channel] > threshold)
+		{
+			// Current for the channel has exceeded threshold
+			
+			if (0 == (internalBDStatus & channelMask))
+			{
+				// Channel is currently in a non-detecting state
+				// Wait for the turnon delay before actually indicating on
+				if (channelOnDelayCount[channel] < channelOnDelay[channel])
+					channelOnDelayCount[channel]++;
+				else
+				{
+					internalBDStatus |= channelMask;
+					channelOffDelayCount[channel] = 0;
+				}
+			} else {
+				// Channel is currently in a detecting state
+				channelOffDelayCount[channel] = 0;
+			}
+		} else {
+			// Current for the channel is under the threshold value
+			if (internalBDStatus & channelMask)
+			{
+				// Channel is currently in a non-detecting state
+				if (channelOffDelayCount[channel] < channelOffDelay[channel])
+					channelOffDelayCount[channel]++;
+				else
+				{
+					internalBDStatus &= ~(channelMask);
+					channelOnDelayCount[channel] = 0;
+				}
+			} else {
+				// Channel is currently in a detecting state
+				channelOnDelayCount[channel] = 0;
+			}
+		}
+	}
+}
+
+uint8_t debounce(uint8_t debouncedState, uint8_t newInputs)
 {
-	uint8_t bd_int_status = (PIND>>4) & 0x0F;
-	uint8_t bd_ext1_status = (PINC & 0x0F);
-	uint8_t bd_ext2_status = (PINB & 0x07) | ((PINC>>1) & 0x08);
-	
-	uint16_t bd_status = ((uint16_t)bd_int_status)<<8;
-	bd_status |= bd_ext1_status<<4;
-	bd_status |= bd_ext2_status;
-	
-	return(bd_status);
+	static uint8_t clock_A=0, clock_B=0;
+	uint8_t delta = newInputs ^ debouncedState;   //Find all of the changes
+	uint8_t changes;
+
+	clock_A ^= clock_B;                     //Increment the counters
+	clock_B  = ~clock_B;
+
+	clock_A &= delta;                       //Reset the counters if no changes
+	clock_B &= delta;                       //were detected.
+
+	changes = ~((~delta) | clock_A | clock_B);
+	debouncedState ^= changes;
+	return(debouncedState);
 }
+
+void readExternalDetectors()
+{
+	uint8_t currentInputs = (PINB & 0x3F) | (0xC0 & (PIND<<3));
+	externalBDStatus = debounce(externalBDStatus, currentInputs);
+}
+
+uint8_t readDetectors(void)
+{
+	static uint8_t old_internalBDStatus = 0;
+	static uint8_t old_externalBDStatus = 0;
+	uint8_t changed = 0;
+	
+	// Okay, we've got a new scan of all ADC inputs
+	// Do some stuff
+	readInternalDetectors();
+	readExternalDetectors();
+
+	if (old_internalBDStatus != internalBDStatus
+		|| old_externalBDStatus != externalBDStatus)
+	{
+		old_internalBDStatus = internalBDStatus;
+		old_externalBDStatus = externalBDStatus;
+		changed = 1;
+	}
+	
+	// Returns 0 if no change, 1 if change
+	return changed;
+}
+
 
 int main(void)
 {
 	uint8_t changed = 0;
-	uint16_t bd_status=0x00FF, old_bd_status = 0x00FF;
+
 	// Application initialization
 	init();
 	initializeADC();
@@ -352,14 +499,10 @@ int main(void)
 
 		if (eventFlags & EVENT_DO_BD_READ)
 		{
-			bd_status = readDetectors();
-			if (bd_status != old_bd_status)
-			{
-				changed = 1;
-				old_bd_status = bd_status;
-			}
+			changed = readDetectors();
 			
 			eventFlags &= ~(EVENT_DO_BD_READ);
+			ADCSRA |= _BV(ADSC);			
 		}
 
 		if (decisecs >= update_decisecs)		
@@ -378,11 +521,10 @@ int main(void)
 
 			txBuffer[MRBUS_PKT_SRC] = mrbus_dev_addr;
 			txBuffer[MRBUS_PKT_DEST] = 0xFF;
-			txBuffer[MRBUS_PKT_LEN] = 9;
+			txBuffer[MRBUS_PKT_LEN] = 8;
 			txBuffer[5] = 'S';
-			txBuffer[6] = 0x0F & (bd_status>>8);
-			txBuffer[7] = bd_status & 0xFF;
-			txBuffer[8] = busVoltage;
+			txBuffer[6] = internalBDStatus;
+			txBuffer[7] = externalBDStatus;
 
 			mrbusPktQueuePush(&mrbusTxQueue, txBuffer, txBuffer[MRBUS_PKT_LEN]);
 			changed = 0;
