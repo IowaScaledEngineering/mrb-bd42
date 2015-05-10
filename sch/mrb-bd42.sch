@@ -1626,7 +1626,7 @@ C 57800 59500 1 0 0 mcp1702-1.sym
 T 59200 60500 5 10 1 1 0 6 1
 refdes=U3
 T 58700 60500 5 10 1 1 0 6 1
-device=MCP1702
+device=AP2120
 T 58700 60500 5 10 0 1 0 0 1
 footprint=SOT23
 }
@@ -1644,13 +1644,13 @@ value=1uF
 T 59500 60100 5 10 0 0 0 0 1
 footprint=0805
 }
-N 59400 60100 60500 60100 4
+N 59400 60100 61200 60100 4
 {
-T 60700 60000 5 10 1 1 0 0 1
+T 61400 60000 5 10 1 1 0 0 1
 netname=VBIAS
 }
 N 58600 59000 58600 59500 4
-N 58600 59200 59700 59200 4
+N 58600 59200 60700 59200 4
 C 55700 40000 1 90 0 pot-1.sym
 {
 T 54800 40800 5 10 0 0 90 0 1
@@ -1776,3 +1776,17 @@ N 71000 53800 69800 53800 4
 T 67900 55100 9 10 1 0 0 0 2
 For MRB-BD42: Omit C19 and substitute 0-ohm 1206 for D14
 For MRB-BD4X: Populate D14 and C19
+C 60800 59200 1 90 0 resistor-1.sym
+{
+T 60400 59500 5 10 0 0 90 0 1
+device=RESISTOR
+T 61200 59800 5 10 1 1 180 0 1
+refdes=R23
+T 61200 59500 5 10 1 1 180 0 1
+value=330
+T 60800 59200 5 10 0 0 90 0 1
+footprint=0805
+}
+T 62500 59600 9 10 1 0 0 0 2
+Note: R23 prevents current pushed through the feedback networks of
+ the op-amps from affecting the 1.2V reference rail
