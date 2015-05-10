@@ -1,0 +1,10 @@
+This source code depends upon the MRBus Core Library:
+https://github.com/IowaScaledEngineering/mrbus
+
+When cloning the mrb-bd42 firmware, you'll need to run the following two
+commands:
+
+git submodule init
+git submodule update
+
+This will go get the proper version of the mrbus library source.
