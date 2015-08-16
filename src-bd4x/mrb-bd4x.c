@@ -332,8 +332,8 @@ int main(void)
 
 		if (eventFlags & EVENT_DO_BD_READ)
 		{
-			readDetectors();
-			PORTB = (PORTB & 0xF0) | (internalBDStatus & 0x0F);
+			if (readDetectors())
+				PORTB = (PORTB & 0xF0) | (internalBDStatus & 0x0F);
 			
 			eventFlags &= ~(EVENT_DO_BD_READ);
 			ADCSRA |= _BV(ADSC);			
