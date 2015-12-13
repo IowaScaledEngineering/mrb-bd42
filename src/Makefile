@@ -27,8 +27,8 @@
 
 BASE_NAME = mrb-bd42
 
-PROGRAMMER_TYPE=avrispmkii
-#PROGRAMMER_TYPE=usbtiny
+#PROGRAMMER_TYPE=avrispmkii
+PROGRAMMER_TYPE=usbtiny
 PROGRAMMER_PORT=usb
 
 MRBUS_LIB=./mrbus
@@ -65,6 +65,7 @@ COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) $(LDFLAGS) -mmcu=$(DEVIC
 #COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM
 
 help:
+	@echo "make setup...... init/update git submodules"
 	@echo "make hex ....... build $(BASE_NAME).hex"
 	@echo "make flash ..... flash the firmware"
 	@echo "make fuse ...... flash the fuses"
@@ -76,6 +77,10 @@ help:
 	@echo "make terminal... open up avrdude terminal"
 
 hex: $(BASE_NAME).hex
+
+setup:
+	git submodule init
+	git submodule update
 
 program: fuse flash
 
