@@ -77,6 +77,7 @@ volatile uint16_t adcValue[8];
 volatile uint8_t ticks = 0;
 volatile uint16_t decisecs=0;
 volatile uint16_t update_decisecs=10;
+volatile uint8_t busTimeout = 0;
 
 void initialize100HzTimer(void)
 {
@@ -100,6 +101,9 @@ ISR(TIMER0_COMPA_vect)
 		ticks = 0;
 		decisecs++;
 	}
+
+	if (busTimeout)
+		busTimeout--;
 
 	if (ticks & 0x01)
 	{
@@ -546,30 +550,12 @@ int main(void)
 			changed = 0;
 		}
 
-		if (mrbusPktQueueDepth(&mrbusTxQueue))
+		if (mrbusPktQueueDepth(&mrbusTxQueue) && 0 == busTimeout)
 		{
 			uint8_t fail = mrbusTransmit();
-
-			// If we're here, we failed to start transmission due to somebody else transmitting
-			// Given that our transmit buffer is full, priority one should be getting that data onto
-			// the bus so we can start using our tx buffer again.  So we stay in the while loop, trying
-			// to get bus time.
-
-			// We want to wait 20ms before we try a retransmit to avoid hammering the bus
-			// Because MRBus has a minimum packet size of 6 bytes @ 57.6kbps,
-			// need to check roughly every millisecond to see if we have a new packet
-			// so that we don't miss things we're receiving while waiting to transmit
+			// If we failed to transmit, just take some number of 10mS increments to wait until trying again, minimum of 40mS
 			if (fail)
-			{
-				uint8_t bus_countdown = 20;
-				while (bus_countdown-- > 0 && !mrbusIsBusIdle())
-				{
-					wdt_reset();
-					_delay_ms(1);
-					if (mrbusPktQueueDepth(&mrbusRxQueue))
-						PktHandler();
-				}
-			}
+				busTimeout = 4 + (mrbus_dev_addr & 0x0F);
 		}
 	}
 }
