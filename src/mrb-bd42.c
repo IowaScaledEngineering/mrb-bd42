@@ -134,7 +134,7 @@ void initializeADC()
 
 	// Setup ADC for bus voltage monitoring
 	ADMUX  = 0x40;  // AVCC reference, ADC0 starting channel
-	ADCSRA = _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 128 prescaler
+	ADCSRA = _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0); // 128 prescaler
 	ADCSRB = 0x00;
 	DIDR0  = 0x3F;  // Turn all ADC pins 0-5 into analog inputs
 	ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADIE) | _BV(ADIF);
@@ -269,7 +269,7 @@ void PktHandler(void)
 		txBuffer[8]  = 0xFF & ((uint32_t)(GIT_REV))>>8; // Software Revision
 		txBuffer[9]  = 0xFF & (GIT_REV); // Software Revision
 		txBuffer[10]  = 3; // Hardware Major Revision
-		txBuffer[11]  = 0; // Hardware Minor Revision
+		txBuffer[11]  = 1; // Hardware Minor Revision
 		txBuffer[12] = 'B';
 		txBuffer[13] = 'D';
 		txBuffer[14] = '4';
@@ -351,6 +351,9 @@ void init(void)
 		// It's uninitialized - go ahead and set it to 2 seconds
 		eeprom_write_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L, 20);
 		eeprom_write_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H, 0);
+
+		update_decisecs = (uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) 
+			| (((uint16_t)eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H)) << 8);
 	}
 	// This line assures that update_decisecs is at least 1
 	update_decisecs = max(1, update_decisecs);
