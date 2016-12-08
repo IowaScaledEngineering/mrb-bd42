@@ -1,12 +1,12 @@
 #*************************************************************************
-#Title:    MRB-BD42 v3 Makefile
+#Title:    MRB-BD4X v3 Makefile
 #Authors:  Michael Petersen <railfan@drgw.net>
 #          Nathan Holmes <maverick@drgw.net>
 #File:     MRB-AVRTEMPLATE Makefile
 #License:  GNU General Public License v3
 #
 #LICENSE:
-#    Copyright (C) 2015 Nathan Holmes and Michael Petersen
+#    Copyright (C) 2016 Nathan Holmes and Michael Petersen
 #
 #    Derived from example WinAVR project Makefile
 #
@@ -27,16 +27,16 @@
 
 BASE_NAME = mrb-bd4x
 
-PROGRAMMER_TYPE=avrispmkii
-#PROGRAMMER_TYPE=usbtiny
+#PROGRAMMER_TYPE=avrispmkii
+PROGRAMMER_TYPE=usbtiny
 PROGRAMMER_PORT=usb
 
 MRBUS_LIB=./mrbus
 
 # ATmega328P 20MHz @ 5.0V
-DEVICE  = atmega48
-F_CPU   = 20000000  # Hz
-FUSE_L  = 0xD7
+DEVICE  = atmega328
+F_CPU   = 8000000  # Hz
+FUSE_L  = 0xE2
 FUSE_H  = 0xD1
 FUSE_E  = 0x04
 

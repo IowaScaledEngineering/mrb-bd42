@@ -1,11 +1,11 @@
 /*************************************************************************
-Title:    MRB-BD4X v3 firmware
+Title:    MRB-BD4X v3.1 firmware
 Authors:  Nathan D. Holmes <maverick@drgw.net>
 File:     $Id: $
 License:  GNU General Public License v3
 
 LICENSE:
-    Copyright (C) 2015 Nathan Holmes and Michael Petersen
+    Copyright (C) 2016 Nathan Holmes and Michael Petersen
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ uint8_t channelOffDelayCount[4] = {0, 0, 0, 0};
 uint8_t channelOnDelay[4] = {4, 4, 4, 4};
 uint8_t channelOffDelay[4] = {25, 25, 25, 25};
 
-uint16_t eepromThreshold[4];
+uint16_t eepromThreshold[4] = {0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
 
 #define MRBUS_EE_CHANNEL0_ON_DELAY  0x10
 #define MRBUS_EE_CHANNEL1_ON_DELAY  0x11
@@ -54,6 +54,13 @@ uint16_t eepromThreshold[4];
 
 volatile uint16_t adcValue[8];
 
+void setPktLED(uint8_t on)
+{
+	if (on)
+		PORTD &= ~(0x01);
+	else
+		PORTD |= 0x01;
+}
 
 // ******** Start 100 Hz Timer, 0.16% error version (Timer 0)
 // If you can live with a slightly less accurate timer, this one only uses Timer 0, leaving Timer 1 open
@@ -65,32 +72,28 @@ volatile uint16_t adcValue[8];
 // If you do remove it, be sure to yank the interrupt handler and ticks/secs as well
 // and the call to this function in the main function
 
-volatile uint8_t ticks = 0;
-volatile uint16_t decisecs=0;
-
 void initialize100HzTimer(void)
 {
 	// Set up timer 0 for 100Hz interrupts
 	TCNT0 = 0;
-	OCR0A = 0xC2;
-	ticks = 0;
-	decisecs = 0;
+	OCR0A = 0x4E;
 	TCCR0A = _BV(WGM01);
 	TCCR0B = _BV(CS02) | _BV(CS00);
 	TIMSK0 |= _BV(OCIE0A);
 }
 
-
 ISR(TIMER0_COMPA_vect)
 {
+	static uint8_t ticks = 0;
 	uint8_t newLedValue;
 	
-	if (++ticks >= 50)
-	{
+	if (++ticks >= 100)
 		ticks = 0;
-		PORTD ^= 0x01;
-	}
 
+	// Blink the packet LED at 1Hz to indicate life
+	setPktLED((ticks>50)?1:0);
+
+	// Multiplex the block detector indicator lights
 	if (ticks & 0x01)
 	{
 		newLedValue = 0xE0;
@@ -120,7 +123,7 @@ void initializeADC()
 
 	// Setup ADC for bus voltage monitoring
 	ADMUX  = 0x40;  // AVCC reference, ADC0 starting channel
-	ADCSRA = _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 128 prescaler
+	ADCSRA = _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 64 prescaler (125kHz ADC clock on 8MHz internal clock)
 	ADCSRB = 0x00;
 	DIDR0  = 0x3F;  // Turn all ADC pins 0-5 into analog inputs
 	ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADIE) | _BV(ADIF);
@@ -145,13 +148,18 @@ ISR(ADC_vect)
 		if (8 == workingChannel)
 		{
 			workingChannel = 0;
-			eventFlags |= EVENT_DO_BD_READ;
+			// EVENT_DO_BD_READ is an interlock - once we've completed all eight channels, set it
+			// so that the main loop can then process what we've collected
+			eventFlags |= EVENT_DO_BD_READ;  
 		}
 	}
 
+
+	// If we're not done reading (ie, the flag is set), go ahead and trigger the next conversion
+	// Not using auto-trigger so that we can safely change channels - avoids that first glitch
+	// reading
 	if (0 == (eventFlags & EVENT_DO_BD_READ))
 	{
-		// Trigger the next conversion.  Not using auto-trigger so that we can safely change channels
 		ADCSRA |= _BV(ADSC);
 	}
 }
@@ -162,7 +170,7 @@ ISR(ADC_vect)
 
 void init(void)
 {
-	// Clear watchdog (in the case of an 'X' packet reset)
+	// Clear watchdog
 	MCUSR = 0;
 #ifdef ENABLE_WATCHDOG
 	// If you don't want the watchdog to do system reset, remove this chunk of code
@@ -188,6 +196,11 @@ void init(void)
 	PORTB |= PORTB_IN_BITS;
 	PORTC |= PORTC_IN_BITS;
 	PORTD |= PORTD_IN_BITS;
+
+	setPktLED(0);
+
+	// Read all four channel configurations from EEPROM (on delay, off delay, firmware thresholds)
+	// If they aren't initialized (set to 0xFF), initialize them and reread
 
 	for (uint8_t channel = 0; channel < 4; channel++)
 	{
@@ -277,43 +290,6 @@ void readInternalDetectors(void)
 	}
 }
 
-uint8_t debounce(uint8_t debouncedState, uint8_t newInputs)
-{
-	static uint8_t clock_A=0, clock_B=0;
-	uint8_t delta = newInputs ^ debouncedState;   //Find all of the changes
-	uint8_t changes;
-
-	clock_A ^= clock_B;                     //Increment the counters
-	clock_B  = ~clock_B;
-
-	clock_A &= delta;                       //Reset the counters if no changes
-	clock_B &= delta;                       //were detected.
-
-	changes = ~((~delta) | clock_A | clock_B);
-	debouncedState ^= changes;
-	return(debouncedState);
-}
-
-uint8_t readDetectors(void)
-{
-	static uint8_t old_internalBDStatus = 0;
-	uint8_t changed = 0;
-	
-	// Okay, we've got a new scan of all ADC inputs
-	// Do some stuff
-	readInternalDetectors();
-
-	if (old_internalBDStatus != internalBDStatus)
-	{
-		old_internalBDStatus = internalBDStatus;
-		changed = 1;
-	}
-	
-	// Returns 0 if no change, 1 if change
-	return changed;
-}
-
-
 int main(void)
 {
 	// Application initialization
@@ -332,11 +308,11 @@ int main(void)
 
 		if (eventFlags & EVENT_DO_BD_READ)
 		{
-			if (readDetectors())
-				PORTB = (PORTB & 0xF0) | (internalBDStatus & 0x0F);
+			readInternalDetectors();
+			PORTB = (PORTB & 0xF0) | (internalBDStatus & 0x0F);
 			
 			eventFlags &= ~(EVENT_DO_BD_READ);
-			ADCSRA |= _BV(ADSC);			
+			ADCSRA |= _BV(ADSC);  // Start next ADC round
 		}
 	}
 }
